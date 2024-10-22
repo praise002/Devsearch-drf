@@ -1,7 +1,9 @@
+
 from django.utils.translation import gettext_lazy as _
-from django.contrib.auth import authenticate
 from rest_framework import serializers
-from .models import User
+# from rest_framework_simplejwt.views import TokenObtainPairView
+from .models import Otp, User
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -31,20 +33,47 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         return attrs
 
-class LoginSerializer(serializers.Serializer):
+class SendOtpSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    password = serializers.CharField(write_only=True)
+    
+    def validate_email(self, value):
+        try:
+            User.objects.get(email=value)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({
+                'error': 'User with this email does not exist.'
+            })
+        
+        return value
+
+class VerifyOtpSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.IntegerField()
     
     def validate(self, attrs):
         email = attrs.get('email')
-        password = attrs.get('password')
+        otp = attrs.get('otp')
         
-        # Authenticate the user
-        user = authenticate(email=email, password=password)
-        if user is None:
-            raise serializers.ValidationError(_('Invalid email or password.'))
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({
+                'error': 'User with this email does not exist.'
+            })
         
-        # If authentication is successful, add the user to validated_data
-        attrs['user'] = user
+        try:
+            otp_record = Otp.objects.get(user=user, otp=otp)
+        except Otp.DoesNotExist:
+            raise serializers.ValidationError({
+                'error': 'Invalid OTP provided.'
+            })
+        
+        # Check if OTP is expired
+        if not otp_record.is_valid:
+            raise serializers.ValidationError({
+                'error': 'OTP has expired.',
+                'next_action': 'request_new_otp',  
+                'request_url': '/api/v1/auth/send-otp/'
+            })
+        
         return attrs
-        

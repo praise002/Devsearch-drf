@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 from decouple import config
 import os
@@ -42,7 +43,7 @@ DJANGO_APPS = [
 
 THIRD_PARTY_APPS = [
     'rest_framework',
-    'rest_framework.authtoken',
+    'rest_framework_simplejwt',
     'cloudinary_storage',
     'cloudinary',
     'debug_toolbar',
@@ -78,7 +79,7 @@ ROOT_URLCONF = 'devsearch.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -171,17 +172,20 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 
 # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-PASSWORD_RESET_TIMEOUT = 900  # expires in 15 minutes
+# PASSWORD_RESET_TIMEOUT = 900  # expires in 15 minutes
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
-    ],
-    # 'DEFAULT_PERMISSION_CLASSES': [
-    #     'rest_framework.permissions.IsAuthenticated',
-    # ],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
 }
 
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+}
+
+EMAIL_OTP_EXPIRE_MINUTES = 15
 
 # JAZZMIN_SETTINGS = {
 #     # title of the window (Will default to current_admin_site.site_title if absent or None)

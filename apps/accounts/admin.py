@@ -2,11 +2,13 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 from django.utils.safestring import mark_safe
-from apps.accounts.models import User
+from apps.accounts.models import User, Otp
 
 admin.site.site_header = mark_safe(
     '<strong style="font-weight: bold;">DEVSEARCH V2 ADMIN </strong>'
 )
+
+admin.site.register(Otp)
 
 class UserAdmin(BaseUserAdmin):
     list_display = ("first_name", "last_name", "username", "is_email_verified", "created_at")

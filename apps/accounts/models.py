@@ -1,3 +1,6 @@
+from datetime import timedelta
+from django.utils import timezone
+from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.utils.translation import gettext_lazy as _
@@ -44,5 +47,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     def __str__(self):
         return self.full_name
-
-
+    
+class Otp(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    otp = models.IntegerField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expiry = models.DateTimeField(null=True)
+    
+    def __str__(self):
+        return str(self.otp)
+    
+    @property
+    def is_valid(self):
+        expiration_time = self.created_at + \
+            timedelta(minutes=settings.EMAIL_OTP_EXPIRE_MINUTES)
+        return timezone.now() < expiration_time
