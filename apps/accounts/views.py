@@ -7,12 +7,16 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 
 from apps.accounts.emails import SendEmail
-from .serializers import PasswordChangeSerializer, RegisterSerializer, SendOtpSerializer, VerifyOtpSerializer
-from .models import User
-import random
+from .serializers import (PasswordChangeSerializer, RegisterSerializer, 
+                          RequestPasswordResetOtpSerializer, 
+                          ResetPasswordWithOtpSerializer, 
+                          SendOtpSerializer, VerifyOtpSerializer,
+                          CustomTokenObtainPairSerializer)
+from .models import User, Otp
+from .permissions import IsUnauthenticated
 
 class RegisterView(APIView):
-    permission_classes = [AllowAny] 
+    # permission_classes = [AllowAny] 
     serializer_class = RegisterSerializer
     
     def post(self, request):
@@ -33,7 +37,8 @@ class RegisterView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 class LoginView(TokenObtainPairView):
-    permission_classes = (AllowAny,)
+    # permission_classes = (AllowAny,)
+    serializer_class = CustomTokenObtainPairSerializer
     
     def post(self, request, *args, **kwargs):
         try:
@@ -62,6 +67,9 @@ class SendOtpView(APIView):
         email = serializer.validated_data['email']
         user = User.objects.get(email=email)
         
+        # Invalidate/clear any previous OTPs TODO: MIGHT MOVE TO ANOTHER FN LATER
+        Otp.objects.filter(user=user).delete()
+        
         # Send OTP to user's email
         SendEmail.send_otp(request, user)
         
@@ -76,9 +84,11 @@ class VerifyOtpView(APIView):
        
         user = User.objects.get(email=email)
         user.is_email_verified = True
-        user.otp = None  # Clear OTP after verification
-        user.save()   
+        user.save() 
         
+        # Clear OTP after verification
+        Otp.objects.filter(user=user).delete()
+          
         SendEmail.welcome(request, user)         
         
         return Response({'message': 'Email verified successfully.'}, 
@@ -107,4 +117,42 @@ class PasswordChangeView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({'message': 'Password changed successfully.'}, 
+                        status=status.HTTP_200_OK)
+        
+class PasswordResetRequestView(APIView):
+    permission_classes = (IsUnauthenticated,)
+    
+    def post(self, request):
+        serializer = RequestPasswordResetOtpSerializer(data=request.data) 
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        user = User.objects.get(email=email)
+        
+        # Clear otps if another otp is requested 
+        Otp.objects.filter(user=user).delete()
+        
+        # Send OTP to user's email
+        SendEmail.send_password_reset_otp(request, user)
+        
+        return Response({'message': 'OTP sent successfully.'}, 
+                        status=status.HTTP_200_OK)
+    
+class PasswordResetConfirmView(APIView):
+    permission_classes = (IsUnauthenticated,)
+    
+    def post(self, request):
+        serializer = ResetPasswordWithOtpSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)   
+        # This call will set the new password and save the user instance
+        serializer.save()
+        
+        email = serializer.validated_data['email']
+        user = User.objects.get(email=email)
+        
+        # Clear OTP after verification
+        Otp.objects.filter(user=user).delete()
+        
+        SendEmail.password_reset_success(request, user)      
+        
+        return Response({'message': 'Your password has been reset, proceed to login.'}, 
                         status=status.HTTP_200_OK)

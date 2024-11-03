@@ -1,9 +1,9 @@
-
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 # from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import Otp, User
 
 
@@ -41,6 +41,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         except DjangoValidationError as e:
             raise serializers.ValidationError(e.messages)  # Raise any validation errors
         return value
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        # Get the standard token with default claims
+        token = super().get_token(user)
+        # Add custom claim for username
+        token['username'] = user.username
+        return token
     
 class SendOtpSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -111,3 +120,59 @@ class PasswordChangeSerializer(serializers.Serializer):
         new_password = self.validated_data['new_password']
         user.set_password(new_password) # Hash the new password
         user.save()
+        
+class RequestPasswordResetOtpSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    
+    def validate_email(self, value):
+        try:
+            User.objects.get(email=value)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({
+                'error': 'User with this email does not exist.'
+                })
+        
+        return value
+    
+class ResetPasswordWithOtpSerializer(serializers.Serializer): 
+    email = serializers.EmailField()
+    otp = serializers.IntegerField()
+    new_password = serializers.CharField(write_only=True)
+    
+    def validate(self, attrs):
+        email = attrs.get('email')
+        otp = attrs.get('otp')
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({
+                'error': 'User with this email does not exist.'
+            })
+        
+        try:
+            otp_record = Otp.objects.get(user=user, otp=otp)
+        except Otp.DoesNotExist:
+            raise serializers.ValidationError({
+                'error': 'Invalid OTP provided.'
+            })
+        
+        # Check if OTP is expired
+        if not otp_record.is_valid:
+            raise serializers.ValidationError({
+                'error': 'OTP has expired. Please request a new one.',
+            })
+        
+        return attrs
+    
+    def save(self):
+        email = self.validated_data['email']
+        new_password = self.validated_data['new_password']
+        
+        # Update user's password
+        user = User.objects.get(email=email)
+        user.set_password(new_password)
+        user.save()
+        
+        # return {'message': 'Password reset successful.'}
+    # TODO: MIGHT NOT BE NEEDED SINCE VIEWS RETURNS RESPONSE

@@ -52,7 +52,6 @@ class Otp(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     otp = models.IntegerField(null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    expiry = models.DateTimeField(null=True)
     
     def __str__(self):
         return str(self.otp)
@@ -62,3 +61,23 @@ class Otp(models.Model):
         expiration_time = self.created_at + \
             timedelta(minutes=settings.EMAIL_OTP_EXPIRE_MINUTES)
         return timezone.now() < expiration_time
+    
+    @classmethod
+    def generate_otp(cls, user):
+        pass
+
+# @classmethod
+#     def generate_otp(cls, user):
+#         """Generate and save a new OTP for the user."""
+#         otp_code = random.randint(100000, 999999)
+#         otp_instance = cls.objects.create(user=user, otp=otp_code)
+#         return otp_instance
+
+# Clear previous OTPs
+        # Otp.objects.filter(user=user).delete()
+        
+        # # Generate OTP directly from Otp model and send email
+        # otp_instance = Otp.generate_otp(user)
+        # SendEmail.send_otp(request, user, otp_instance.otp)
+        
+        # ask the diff btw it and static method
