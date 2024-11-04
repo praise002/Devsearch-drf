@@ -19,10 +19,12 @@ class Skill(BaseModel):
 
 class Profile(BaseModel):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    short_intro = models.CharField(_("Short Intro"), max_length=200, blank=True)
+    short_intro = models.CharField(_("Short Intro"), max_length=200, 
+                                   blank=True, null=True) #TODO: REMOVE NULL LATER
     bio = models.TextField(_("Bio"), blank=True)
     location = models.CharField(_("Location"), max_length=100, blank=True)
-    photo = models.ImageField(_("Photo"), upload_to="photos/%Y/%m/%d/", blank=True)
+    photo = models.ImageField(_("Photo"), upload_to="photos/%Y/%m/%d/", 
+                              blank=True, null=True) #TODO: REMOVE NULL LATER
     updated = models.DateTimeField(auto_now=True)
     
     # Social Links
@@ -40,6 +42,7 @@ class Profile(BaseModel):
     
     def __str__(self):
         return f"{self.user.full_name}"
+#TODO: MIGHT NEED TO RETURN USERNAME MAYBE FOR THE FE TO USE IN THE URL, NOT SURE YET
     
     @property
     def image_url(self):
