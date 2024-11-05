@@ -48,6 +48,7 @@ THIRD_PARTY_APPS = [
     'cloudinary_storage',
     'cloudinary',
     'debug_toolbar',
+    'drf_spectacular',
 ]
 
 LOCAL_APPS = [
@@ -178,7 +179,15 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'DEVSEARCH V2 API',
+    'DESCRIPTION': 'A developer connect platform',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False, #TODO: EXPLAIN
 }
 
 SIMPLE_JWT = {

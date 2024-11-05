@@ -1,3 +1,89 @@
-from django.shortcuts import render
+from django.http import Http404
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
 
-# Create your views here.
+from apps.accounts.validators import validate_uuid
+from apps.profiles.models import Profile
+from .models import Message
+from .serializers import MessageSerializer
+
+
+# View for listing inbox messages
+class InboxView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        messages = Message.objects.filter(recipient=request.user.profile)
+        serializer = MessageSerializer(messages, many=True)
+
+        unread_count = messages.filter(is_read=False).count()
+
+        return Response(
+            {"messages": serializer.data, "unread_count": unread_count},
+            status=status.HTTP_200_OK,
+        )
+
+
+# View for viewing a specific message
+class ViewMessage(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, id):
+        if not validate_uuid(id):
+            raise Http404("Invalid message id")
+
+        message = get_object_or_404(
+            request.user.profile.messages.select_related("sender__user", "recipient"),
+            id=id,
+        )
+        serializer = MessageSerializer(message)
+
+        # Mark the message as read if it's currently unread
+        if not message.is_read:
+            message.is_read = True
+            message.save()
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# View for creating a new message
+class CreateMessage(APIView):
+    def post(self, request, id):
+        if not validate_uuid(id):
+            raise Http404("Invalid profile id")
+        recipient = get_object_or_404(Profile, id=id)
+
+        try:
+            sender = request.user.profile
+        except:
+            sender = None
+
+        data = request.data.copy()
+
+        data["recipient"] = recipient.id
+
+        serializer = MessageSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(sender=sender)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+# View for deleting a message
+class DeleteMessage(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def delete(self, request, id):
+        if not validate_uuid(id):
+            raise Http404("Invalid message id")
+
+        message = get_object_or_404(Message, id=id, recipient=request.user.profile)
+
+        message.delete()
+        return Response(
+            {"detail": "Message deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT,
+        )
