@@ -187,8 +187,8 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'DEVSEARCH V2 API',
     'DESCRIPTION': 'A developer connect platform',
     'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False, #TODO: EXPLAIN
-}
+    'SERVE_INCLUDE_SCHEMA': False, 
+} 
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=1),

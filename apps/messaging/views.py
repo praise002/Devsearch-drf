@@ -1,4 +1,5 @@
 from django.http import Http404
+from rest_framework.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -56,10 +57,16 @@ class CreateMessage(APIView):
             raise Http404("Invalid profile id")
         recipient = get_object_or_404(Profile, id=id)
 
-        try:
-            sender = request.user.profile
-        except:
-            sender = None
+        # try:
+        #     sender = request.user.profile
+        # except:
+        #     sender = None
+        
+        sender = request.user.profile if request.user.is_authenticated else None
+            
+        # Prevent users from messaging themselves
+        if sender and sender.id == recipient.id:
+            raise ValidationError("You cannot message yourself.")
 
         data = request.data.copy()
 

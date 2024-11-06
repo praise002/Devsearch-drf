@@ -6,34 +6,48 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 
+from drf_spectacular.utils import extend_schema
+
 from apps.accounts.emails import SendEmail
 from .serializers import (PasswordChangeSerializer, RegisterSerializer, 
                           RequestPasswordResetOtpSerializer, 
                           ResetPasswordWithOtpSerializer, 
                           SendOtpSerializer, VerifyOtpSerializer,
-                          CustomTokenObtainPairSerializer)
+                          CustomTokenObtainPairSerializer,
+                          RegisterResponseSerializer,
+                          ErrorDataResponseSerializer)
 from .models import User, Otp
 from .permissions import IsUnauthenticated
 
+tags = ["Auth"]
+
 class RegisterView(APIView):
-    # permission_classes = [AllowAny] 
     serializer_class = RegisterSerializer
+    
+    @extend_schema(
+        summary="Register a new user",
+        description="This endpoint registers new users into our application",
+        tags=tags,
+        responses={201: RegisterResponseSerializer, 400: ErrorDataResponseSerializer},
+    )
     
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        data = serializer.validated_data
         
         # Create JWT tokens
-        refresh = RefreshToken.for_user(user)
+        # refresh = RefreshToken.for_user(user)
         
         # Send OTP for email verification
         SendEmail.send_otp(request, user)
            
         return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'message': 'OTP sent for email verification.'
+            # 'refresh': str(refresh),
+            # 'access': str(refresh.access_token),
+            'message': 'OTP sent for email verification.',
+            'email': data['email']
         }, status=status.HTTP_201_CREATED)
 
 class LoginView(TokenObtainPairView):
@@ -81,6 +95,8 @@ class VerifyOtpView(APIView):
         serializer = VerifyOtpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
+        
+        #TODO: CHECK IF EMAIL IS VERIFIED THEN RETURN A RESPONSE
        
         user = User.objects.get(email=email)
         user.is_email_verified = True
