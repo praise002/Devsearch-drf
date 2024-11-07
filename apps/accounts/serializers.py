@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 # from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from apps.common.serializers import ErrorResponseSerializer, SuccessResponseSerializer
+from apps.common.serializers import SuccessResponseSerializer
 from .models import Otp, User
 
 # REQUEST SERIALIZERS
@@ -192,5 +192,3 @@ class ResetPasswordWithOtpSerializer(serializers.Serializer):
 class RegisterResponseSerializer(SuccessResponseSerializer):
     email = serializers.EmailField(default='bob123@example.com')
     
-class ErrorDataResponseSerializer(ErrorResponseSerializer):
-    data = serializers.DictField()

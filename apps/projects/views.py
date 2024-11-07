@@ -5,18 +5,47 @@ from rest_framework.views import APIView
 
 from django.shortcuts import get_object_or_404
 
+from drf_spectacular.utils import extend_schema
+
+from apps.common.serializers import ErrorDataResponseSerializer, ErrorResponseSerializer, SuccessResponseSerializer
+
 from .models import Project, Tag, Review
 from .serializers import ProjectSerializer, TagSerializer, ReviewSerializer
 
+tags = ["Projects"]
 
 class ProjectListView(APIView):
+    serializer_class = ProjectSerializer
+    
+    @extend_schema(
+        summary="Retrieve a list of user projects",
+        description="This endpoint allows authenticated and unauthenticated users to view a list of all user projects in the system.",
+        tags=tags,
+        responses={
+            200: SuccessResponseSerializer, 
+            #TODO: ADD OTHER ERRORS
+        },
+    )
+    
     def get(self, request):
         projects = Project.objects.select_related("owner").prefetch_related("tags")
-        serializer = ProjectSerializer(projects, many=True)
+        serializer = self.serializer_class(projects, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class ProjectDetailView(APIView):
+    serializer_class = ProjectSerializer
+    
+    @extend_schema(
+        summary="View a project details",
+        description="This endpoint allows authenticated and unauthenticated users to view detailed information about a specific project.",
+        tags=tags,
+        responses={
+            200: SuccessResponseSerializer, 
+            #TODO: ADD OTHER ERRORS
+        },
+    )
+    
     def get(self, request, slug):
         try:
             project = (
@@ -36,6 +65,18 @@ class RelatedProjectsView(APIView):
     """
     API view to retrieve related projects for a specific project.
     """
+    serializer_class = ProjectSerializer
+    
+    @extend_schema(
+        summary="View related projects for a specific project",
+        description="This endpoint allows users to view a list of projects that are related to a specific project. The related projects are determined based on project categories, tags, or other relevant factors. Users can retrieve a list of related projects, which may help them discover similar or complementary projects within the platform.",
+        tags=tags,
+        responses={
+            200: SuccessResponseSerializer, 
+            404: ErrorResponseSerializer,
+            #TODO: ADD OTHER ERRORS
+        },
+    )
 
     def get(self, request, slug):
         try:
@@ -63,9 +104,21 @@ class RelatedProjectsView(APIView):
 
 class ProjectCreateView(APIView):
     permission_classes = (IsAuthenticated,)
+    serializer_class = ProjectSerializer 
+    
+    @extend_schema(
+        summary="Create a new project",
+        description="This endpoint allows authenticated users to create a new project. The user must be logged in to submit project details. Once the project is created, it is saved in the system and can be retrieved or updated later.",
+        tags=tags,
+        responses={
+            200: SuccessResponseSerializer, 
+            400: "",
+            #TODO: ADD OTHER ERRORS
+        },
+    )
 
     def post(self, request):
-        serializer = ProjectSerializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(owner=request.user.profile)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -73,15 +126,38 @@ class ProjectCreateView(APIView):
 
 class ProjectEditDeleteView(APIView):
     permission_classes = (IsAuthenticated,)
+    serializer_class = ProjectSerializer 
+    
+    @extend_schema(
+        summary="Edit a specific project",
+        description="This endpoint allows authenticated users to edit the details of an existing project. The user must be the project owner to edit the project.",
+        tags=tags,
+        responses={
+            200: SuccessResponseSerializer, 
+            400: "",
+            404: ErrorResponseSerializer,
+            #TODO: ADD OTHER ERRORS
+        },
+    )
 
     def patch(self, request, slug):
         profile = request.user.profile
 
         project = get_object_or_404(profile.projects, slug=slug)
-        serializer = ProjectSerializer(project, data=request.data, partial=True)
+        serializer = self.serializer_class(project, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Delete a specific project",
+        description="This endpoint allows authenticated users to delete an existing project. Only the project owner can delete the project. The project will be permanently removed from the system.",
+        tags=tags,
+        responses={
+            204: None,  # Successfully deleted project (no content in response body)
+            404: ErrorResponseSerializer,
+        },
+    )
 
     def delete(self, request, slug):
         profile = request.user.profile
@@ -93,6 +169,17 @@ class ProjectEditDeleteView(APIView):
 
 class TagCreateView(APIView):
     permission_classes = (IsAuthenticated,)
+    serializer_class = TagSerializer 
+
+    @extend_schema(
+        summary="Create a new tag",
+        description="This endpoint allows authenticated users to create a new tag. Tags can be used to categorize or organize projects. Only authenticated users are allowed to create new tags.",
+        tags=tags,
+        responses={
+            201: TagSerializer,  # Successfully created tag
+            400: ErrorResponseSerializer,  # Validation error or bad request
+        }, 
+    )
 
     def post(self, request, slug):
         profile = request.user.profile
@@ -112,12 +199,23 @@ class TagCreateView(APIView):
         # Link the tag to the project
         project.tags.add(tag)
 
-        serializer = TagSerializer(tag)
+        serializer = self.serializer_class(tag)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class TagRemoveView(APIView):
     permission_classes = (IsAuthenticated,)
+
+    @extend_schema(
+        summary="Remove a tag from a project",
+        description="This endpoint allows authenticated users to remove a specific tag from a project. The user must be authenticated and the tag will be removed based on the provided project slug and tag ID.",
+        tags=tags,
+        responses={
+            204: None,  # Successfully removed tag
+            404: ErrorDataResponseSerializer,  # Project or tag not found
+            400: ErrorResponseSerializer,  # Bad request
+        },
+    ) 
 
     def delete(self, request, project_slug, tag_id):
         """Remove a tag from a specific project."""
@@ -147,6 +245,20 @@ class TagRemoveView(APIView):
 
 class ReviewCreateView(APIView):
     permission_classes = (IsAuthenticated,)
+    serializer_class = ReviewSerializer
+    
+    @extend_schema(
+        summary="Create a new review for a project",
+        description="This endpoint allows authenticated users to submit a review for a specific project. Users cannot review their own project, and they can only submit one review per project. The review will be associated with the project and the user submitting it.",
+        tags=tags,
+        responses={
+            201: ReviewSerializer,  # Successfully created review
+            400: ErrorDataResponseSerializer,  # User already reviewed this project
+            403: ErrorDataResponseSerializer,  # User cannot review their own project
+            404: ErrorResponseSerializer,  # Project not found
+        },
+    )
+
 
     def post(self, request, slug):
         # Retrieve the project
@@ -168,7 +280,7 @@ class ReviewCreateView(APIView):
             )
 
         # Create a review using the request data
-        serializer = ReviewSerializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         # Save the review and associate it with the project
         serializer.save(reviewer=request.user.profile, project=project)
@@ -182,11 +294,23 @@ class ProjectReviewListView(APIView):
     """
     API view to retrieve a list of reviews for a specific project.
     """
+    serializer_class = ReviewSerializer
+    
+    @extend_schema(
+        summary="Retrieve all reviews for a project",
+        description="This endpoint allows users to retrieve a list of all reviews for a specific project. It provides a collection of reviews with details such as the reviewer, rating, and feedback for the project.",
+        tags=tags,
+        responses={
+            200: ReviewSerializer(many=True),  # List of reviews for the project
+            404: ErrorResponseSerializer,  # Project not found
+        },
+    )
+
 
     def get(self, request, slug):
         # Retrieve all reviews for the specified project ID
         reviews = Review.objects.filter(project__slug=slug)
         # Serialize the queryset
-        serializer = ReviewSerializer(reviews, many=True)
+        serializer = self.serializer_class(reviews, many=True)
         # Return serialized data in response
         return Response(serializer.data, status=status.HTTP_200_OK)
