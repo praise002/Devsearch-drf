@@ -21,8 +21,8 @@ class MyProfileView(APIView):  # view account and edit it
     serializer_class = ProfileSerializer
     
     @extend_schema(
-        summary="View and update user profile",
-        description="This endpoint allows authenticated users to view and edit their profile details. Users can retrieve their account information, including name, email, and other personal data, and update this information as needed. Only the account owner can access and modify their profile.",
+        summary="View a user profile",
+        description="This endpoint allows authenticated users to view their profile details. Users can retrieve their account information, including name, email, and other personal data. Only the account owner can access their profile.",
         tags=tags,
         responses={
             200: SuccessResponseSerializer, 
@@ -35,6 +35,15 @@ class MyProfileView(APIView):  # view account and edit it
         serializer = self.serializer_class(profile)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        summary="Update user profile",
+        description="This endpoint allows authenticated users to edit their profile details. Users can update their personal information. Only the account owner can modify their profile.",
+        tags=tags,
+        responses={
+            200: SuccessResponseSerializer, 
+            #TODO: ADD OTHER ERRORS
+        },
+    )
     def patch(self, request):
         profile = request.user.profile
         serializer = self.serializer_class(profile, data=request.data, partial=True)
@@ -49,7 +58,7 @@ class ProfileListView(
     @extend_schema(
         summary="Retrieve a list of user profiles",
         description="This endpoint allows authenticated and unauthenticated users to view a list of all user profiles in the system. It returns essential details about each profile, such as name, email, and other public information.",
-        # operation_id="list_profiles",  # Unique operationId
+        operation_id="list_profiles",  # Unique operationId
         tags=tags,
         responses={
             200: SuccessResponseSerializer,

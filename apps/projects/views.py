@@ -20,6 +20,7 @@ class ProjectListView(APIView):
     @extend_schema(
         summary="Retrieve a list of user projects",
         description="This endpoint allows authenticated and unauthenticated users to view a list of all user projects in the system.",
+        operation_id="list_projects",
         tags=tags,
         responses={
             200: SuccessResponseSerializer, 

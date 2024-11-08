@@ -1,4 +1,3 @@
-
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
@@ -9,6 +8,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from apps.common.serializers import SuccessResponseSerializer
 from .models import Otp, User
+
 
 # REQUEST SERIALIZERS
 class RegisterSerializer(serializers.ModelSerializer):
@@ -39,7 +39,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         return attrs
 
-    def validate_password(self, value):  
+    def validate_password(self, value):
         try:
             validate_password(value)  # This invokes all default password validators
         except DjangoValidationError as e:
@@ -60,16 +60,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class SendOtpSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
-    def validate_email(self, value):
-        try:
-            User.objects.get(email=value)
-        except User.DoesNotExist:
-            raise serializers.ValidationError(
-                {"error": "User with this email does not exist."}
-            )
-
-        return value
-
 
 class VerifyOtpSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -78,13 +68,13 @@ class VerifyOtpSerializer(serializers.Serializer):
     def validate(self, attrs):
         email = attrs.get("email")
         otp = attrs.get("otp")
-
+        
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             raise serializers.ValidationError(
-                {"error": "User with this email does not exist."}
-            )
+                {"error": "No account is associated with this email."},
+            ) 
 
         try:
             otp_record = Otp.objects.get(user=user, otp=otp)
@@ -187,8 +177,18 @@ class ResetPasswordWithOtpSerializer(serializers.Serializer):
 
     # TODO: MIGHT NOT BE NEEDED SINCE VIEWS RETURNS RESPONSE
 
+
 # RESPONSES
 
+
 class RegisterResponseSerializer(SuccessResponseSerializer):
-    email = serializers.EmailField(default='bob123@example.com')
-    
+    email = serializers.EmailField(default="bob123@example.com")
+
+
+class LoginResponseSerializer(SuccessResponseSerializer):
+    data = serializers.DictField(
+        default={
+            "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzMxMDY5NzEyLCJpYXQiOjE3MzA5ODMzMTIsImp0aSI6ImIzYTM2NmEwMDZkZTQxZTg4YzRlNDhmNzZmYmYyNWQ0IiwidXNlcl9pZCI6IjNhYzFlMzJiLTUzOWYtNDZkYi05ODZlLWRiZDFkZDQyYmUzMCIsInVzZXJuYW1lIjoiZGF2aWQtYmFkbXVzIn0.YuhFA2m47oDiwkOUd359hcumhN6lX5QfvXd92ES8vSQ",
+            "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTczODc1OTMxMiwiaWF0IjoxNzMwOTgzMzEyLCJqdGkiOiI5NjBkZmE2NTFhYjk0YWYzYTU4MjgzMTcwYjIxODEwYiIsInVzZXJfaWQiOiIzYWMxZTMyYi01MzlmLTQ2ZGItOTg2ZS1kYmQxZGQ0MmJlMzAiLCJ1c2VybmFtZSI6ImRhdmlkLWJhZG11cyJ9.A5shgQ-SI891PRS6nDs4-LA6ZNBoVXmLF2L9VMXoPC4",
+        }
+    )

@@ -190,8 +190,7 @@ SPECTACULAR_SETTINGS = {
         It provides a range of functionalities to support collaboration, skill-sharing, and project discovery.
         The API allows developers to create and manage their profiles, list and search for projects, 
         rate and review projects, and connect with other professionals.
-        We have focused on improving performance, scalability, and introducing new features 
-        that make it easier for developers to connect and collaborate. The API is built using modern best practices 
+        The API is built using modern best practices 
         and RESTful principles, ensuring that it is intuitive and easy to integrate into your applications.
     ''',
     'VERSION': '1.0.0',
