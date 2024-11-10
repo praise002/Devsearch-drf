@@ -33,6 +33,8 @@ tags = ["Auth"]
 
 class RegisterView(APIView):
     serializer_class = RegisterSerializer
+    permission_classes = (IsUnauthenticated,)
+    authentication_classes = ()
 
     @extend_schema(
         summary="Register a new user",
@@ -70,7 +72,7 @@ class LoginView(TokenObtainPairView):
         responses={
             200: LoginResponseSerializer,
             404: ErrorResponseSerializer,
-            401: ErrorResponseSerializer,
+            403: ErrorResponseSerializer,
         },
         tags=tags,
     )
@@ -87,7 +89,7 @@ class LoginView(TokenObtainPairView):
                         "next_action": "send_otp",  # Inform the client to call SendOtpView
                         "email": user.email,  # Send back the email to pass it to SendOtpView
                     },
-                    status=status.HTTP_401_UNAUTHORIZED,
+                    status=status.HTTP_403_FORBIDDEN,
                 )
 
         except User.DoesNotExist:
@@ -101,6 +103,7 @@ class LoginView(TokenObtainPairView):
 
 class SendOtpView(APIView):
     serializer_class = SendOtpSerializer
+    permission_classes = (IsUnauthenticated,)
 
     @extend_schema(
         summary="Send OTP to a user's email",
@@ -115,13 +118,13 @@ class SendOtpView(APIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
-        
+
         try:
             user = User.objects.get(email=email)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             return Response(
-                {"error": "No account is associated with this email."}, 
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "No account is associated with this email."},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         # Invalidate/clear any previous OTPs TODO: MIGHT MOVE TO ANOTHER FN LATER
@@ -137,6 +140,7 @@ class SendOtpView(APIView):
 
 class VerifyOtpView(APIView):
     serializer_class = VerifyOtpSerializer
+    permission_classes = (IsUnauthenticated,)
 
     @extend_schema(
         summary="Verify a user's email",
@@ -144,15 +148,46 @@ class VerifyOtpView(APIView):
         responses={
             200: SuccessResponseSerializer,
             400: ErrorDataResponseSerializer,
+            404: ErrorResponseSerializer,
+            410: ErrorResponseSerializer,
         },
         tags=tags,
     )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        email = serializer.validated_data["email"]
-        user = User.objects.get(email=email)
 
+        email = serializer.validated_data["email"]
+        otp = serializer.validated_data["otp"]
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "No account is associated with this email."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Check if the OTP is valid for this user
+        try:
+            otp_record = Otp.objects.get(user=user, otp=otp)
+        except Otp.DoesNotExist:
+            return Response(
+                {"error": "Invalid OTP provided."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if OTP is expired
+        if not otp_record.is_valid:
+            return Response(
+                {
+                    "error": "OTP has expired.",
+                    "next_action": "request_new_otp",
+                    "request_url": "/api/v1/auth/send-otp/",
+                },
+                status=status.HTTP_410_GONE,
+            )
+
+        # Check if user is already verified
         if user.is_email_verified:
             # Clear the OTP
             Otp.objects.filter(user=user).delete()
@@ -181,7 +216,7 @@ class LogoutView(APIView):
         summary="Logout a user",
         description="This endpoint logs a user out from our application",
         responses={
-            200: SuccessResponseSerializer,
+            205: SuccessResponseSerializer,
             401: ErrorResponseSerializer,
         },
         tags=tags,
@@ -208,7 +243,6 @@ class PasswordChangeView(APIView):
         responses={
             200: SuccessResponseSerializer,
             422: ErrorDataResponseSerializer,
-            404: ErrorResponseSerializer,
         },
         tags=tags,
     )
@@ -232,7 +266,7 @@ class PasswordResetRequestView(APIView):
         description="This endpoint sends new password reset otp to the user's email",
         responses={
             200: SuccessResponseSerializer,
-            422: ErrorDataResponseSerializer,
+            403: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
         },
         tags=tags,
@@ -241,7 +275,14 @@ class PasswordResetRequestView(APIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
-        user = User.objects.get(email=email)
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User with this email does not exist."},
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
 
         # Clear otps if another otp is requested
         Otp.objects.filter(user=user).delete()
@@ -263,9 +304,9 @@ class PasswordResetConfirmView(APIView):
         description="This endpoint verifies the password reset otp",
         responses={
             200: SuccessResponseSerializer,
-            422: ErrorDataResponseSerializer,
+            403: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
-            498: ErrorResponseSerializer,
+            410: ErrorResponseSerializer,
         },
         tags=tags,
     )
@@ -276,7 +317,34 @@ class PasswordResetConfirmView(APIView):
         serializer.save()
 
         email = serializer.validated_data["email"]
-        user = User.objects.get(email=email)
+        otp = serializer.validated_data["otp"]
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "No account is associated with this email."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Check if the OTP is valid for this user
+        try:
+            otp_record = Otp.objects.get(user=user, otp=otp)
+        except Otp.DoesNotExist:
+            return Response(
+                {"error": "Invalid OTP provided."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if OTP is expired
+        if not otp_record.is_valid:
+            return Response(
+                {
+                    "error": "OTP has expired. Please request a new one.",
+                    "next_action": "request_new_otp",
+                },
+                status=status.HTTP_410_GONE,
+            )
+
 
         # Clear OTP after verification
         Otp.objects.filter(user=user).delete()
@@ -293,10 +361,11 @@ class RefreshTokensView(TokenRefreshView):
     @extend_schema(
         summary="Refresh user access token",
         description="This endpoint allows users to refresh their access token using a valid refresh token. It returns a new access token, which can be used for further authenticated requests.",
-        tags=tags,  # Replace with your tags or add a suitable tag
+        tags=tags,  
         responses={
-            200: SuccessResponseSerializer,  # Define the response schema for successful token refresh
-            401: ErrorDataResponseSerializer,  # Define the response schema for invalid refresh token or other errors
+            200: SuccessResponseSerializer,  # response schema for successful token refresh
+            401: ErrorDataResponseSerializer,  
+            403: ErrorDataResponseSerializer,
         },
     )
     def post(self, request, *args, **kwargs):
