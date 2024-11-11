@@ -101,7 +101,7 @@ class CreateMessage(APIView):
                 description="Message successfully created and sent.",
             ),
             400: OpenApiResponse(
-                description="Bad request - validation error (e.g., trying to message oneself)."
+                description="Bad request - validation error."
             ),
             404: OpenApiResponse(
                 description="Recipient profile not found or invalid profile ID."

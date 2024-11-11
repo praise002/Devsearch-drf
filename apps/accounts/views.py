@@ -27,6 +27,8 @@ from apps.common.serializers import (
 )
 from .models import User, Otp
 from .permissions import IsUnauthenticated
+from rest_framework.permissions import AllowAny
+
 
 tags = ["Auth"]
 
@@ -34,7 +36,6 @@ tags = ["Auth"]
 class RegisterView(APIView):
     serializer_class = RegisterSerializer
     permission_classes = (IsUnauthenticated,)
-    authentication_classes = ()
 
     @extend_schema(
         summary="Register a new user",
@@ -44,6 +45,7 @@ class RegisterView(APIView):
             201: RegisterResponseSerializer,
             400: ErrorDataResponseSerializer,
         },
+        auth=[],
     )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
@@ -107,12 +109,14 @@ class SendOtpView(APIView):
 
     @extend_schema(
         summary="Send OTP to a user's email",
-        description="This endpoint sends OTP to a user's email",
+        description="This endpoint sends OTP to a user's email for verification",
         responses={
             200: SuccessResponseSerializer,
+            400: ErrorDataResponseSerializer,
             404: ErrorResponseSerializer,
         },
         tags=tags,
+        auth=[],
     )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
@@ -152,6 +156,7 @@ class VerifyOtpView(APIView):
             410: ErrorResponseSerializer,
         },
         tags=tags,
+        auth=[],
     )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
@@ -266,10 +271,11 @@ class PasswordResetRequestView(APIView):
         description="This endpoint sends new password reset otp to the user's email",
         responses={
             200: SuccessResponseSerializer,
-            403: ErrorResponseSerializer,
+            400: ErrorDataResponseSerializer,
             404: ErrorResponseSerializer,
         },
         tags=tags,
+        auth=[],
     )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
@@ -301,14 +307,15 @@ class PasswordResetConfirmView(APIView):
 
     @extend_schema(
         summary="Set New Password",
-        description="This endpoint verifies the password reset otp",
+        description="This endpoint verifies the password reset OTP and sets a new password if the OTP is valid.",
         responses={
             200: SuccessResponseSerializer,
-            403: ErrorResponseSerializer,
+            400: ErrorDataResponseSerializer,
             404: ErrorResponseSerializer,
             410: ErrorResponseSerializer,
         },
         tags=tags,
+        auth=[],
     )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
@@ -318,7 +325,7 @@ class PasswordResetConfirmView(APIView):
 
         email = serializer.validated_data["email"]
         otp = serializer.validated_data["otp"]
-        
+
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
@@ -345,6 +352,10 @@ class PasswordResetConfirmView(APIView):
                 status=status.HTTP_410_GONE,
             )
 
+        # Update the user's password
+        new_password = serializer.validated_data["new_password"]
+        user.set_password(new_password)
+        user.save()
 
         # Clear OTP after verification
         Otp.objects.filter(user=user).delete()
@@ -361,11 +372,10 @@ class RefreshTokensView(TokenRefreshView):
     @extend_schema(
         summary="Refresh user access token",
         description="This endpoint allows users to refresh their access token using a valid refresh token. It returns a new access token, which can be used for further authenticated requests.",
-        tags=tags,  
+        tags=tags,
         responses={
             200: SuccessResponseSerializer,  # response schema for successful token refresh
-            401: ErrorDataResponseSerializer,  
-            403: ErrorDataResponseSerializer,
+            401: ErrorDataResponseSerializer,
         },
     )
     def post(self, request, *args, **kwargs):
@@ -375,3 +385,6 @@ class RefreshTokensView(TokenRefreshView):
         response = super().post(request, *args, **kwargs)
 
         return response
+
+
+# WRITE TEST TO TEST ALL CASES OF RESPONSE ERROR

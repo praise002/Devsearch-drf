@@ -84,12 +84,6 @@ class PasswordChangeSerializer(serializers.Serializer):
             )
         return value
 
-    def save(self):
-        user = self.context["request"].user
-        new_password = self.validated_data["new_password"]
-        user.set_password(new_password)  # Hash the new password
-        user.save()
-
 
 class RequestPasswordResetOtpSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -98,15 +92,6 @@ class ResetPasswordWithOtpSerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.IntegerField()
     new_password = serializers.CharField(write_only=True)
-
-    def save(self):
-        email = self.validated_data["email"]
-        new_password = self.validated_data["new_password"]
-
-        # Update user's password
-        user = User.objects.get(email=email)
-        user.set_password(new_password)
-        user.save()
 
 
 # RESPONSES
