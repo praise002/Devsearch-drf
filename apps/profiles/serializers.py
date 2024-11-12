@@ -30,14 +30,14 @@ class ProfileSerializer(serializers.ModelSerializer):
             "social_twitter", "social_linkedin",
             "skills",
         ] 
-        extra_kwargs = {
-            'short_intro': {'required': False},
-            'bio': {'required': False},
-            'location': {'required': False},
-            'photo': {'required': False},
-            'social_github': {'required': False},
-            'social_stackoverflow': {'required': False},
-            'social_twitter': {'required': False},
-            'social_linkedin': {'required': False},
-        }
+        # extra_kwargs = {
+        #     'short_intro': {'required': False},
+        #     'bio': {'required': False},
+        #     'location': {'required': False},
+        #     'photo': {'required': False},
+        #     'social_github': {'required': False},
+        #     'social_stackoverflow': {'required': False},
+        #     'social_twitter': {'required': False},
+        #     'social_linkedin': {'required': False},
+        # }
         

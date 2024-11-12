@@ -21,13 +21,13 @@ class Skill(BaseModel):
 class Profile(BaseModel):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     short_intro = models.CharField(
-        _("Short Intro"), max_length=200, blank=True, null=True
-    )  # TODO: REMOVE NULL LATER
+        _("Short Intro"), max_length=200, blank=True
+    )  
     bio = models.TextField(_("Bio"), blank=True)
     location = models.CharField(_("Location"), max_length=100, blank=True)
     photo = models.ImageField(
-        _("Photo"), upload_to="photos/%Y/%m/%d/", blank=True, null=True
-    )  # TODO: REMOVE NULL LATER
+        _("Photo"), upload_to="photos/%Y/%m/%d/", blank=True
+    )  
     updated = models.DateTimeField(auto_now=True)
 
     # Social Links

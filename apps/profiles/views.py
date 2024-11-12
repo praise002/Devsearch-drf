@@ -26,6 +26,7 @@ class MyProfileView(APIView):  # view account and edit it
         tags=tags,
         responses={
             200: SuccessResponseSerializer, 
+            401: ErrorResponseSerializer,
             #TODO: ADD OTHER ERRORS
         },
     )
@@ -41,6 +42,7 @@ class MyProfileView(APIView):  # view account and edit it
         tags=tags,
         responses={
             200: SuccessResponseSerializer, 
+            401: ErrorResponseSerializer,
             #TODO: ADD OTHER ERRORS
         },
     )
@@ -111,7 +113,7 @@ class SkillCreateView(APIView):
         description="This endpoint allows authenticated users to add a new skill to their profile. The user can specify skill details, which will be saved and associated with their profile. This endpoint requires authentication and is only accessible to logged-in users.",
         tags=tags,
         responses={
-            201: "",
+            201: SuccessResponseSerializer,
             #TODO: ADD OTHER ERRORS
         },
     )
@@ -138,6 +140,8 @@ class SkillDetailView(APIView):  # detail, edit, delete
         tags=tags,
         responses={
             200: SuccessResponseSerializer,
+            401: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
             #TODO: ADD OTHER ERRORS
         },
     )
@@ -153,6 +157,8 @@ class SkillDetailView(APIView):  # detail, edit, delete
         tags=tags,
         responses={
             200: SuccessResponseSerializer,
+            401: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
             #TODO: ADD OTHER ERRORS
         },
     )
@@ -170,6 +176,8 @@ class SkillDetailView(APIView):  # detail, edit, delete
         tags=tags,
         responses={
             200: SuccessResponseSerializer,
+            401: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
             #TODO: ADD OTHER ERRORS
         },
     )

@@ -43,6 +43,7 @@ class ProjectDetailView(APIView):
         tags=tags,
         responses={
             200: SuccessResponseSerializer, 
+            404: ErrorResponseSerializer,
             #TODO: ADD OTHER ERRORS
         },
     )
@@ -113,7 +114,8 @@ class ProjectCreateView(APIView):
         tags=tags,
         responses={
             200: SuccessResponseSerializer, 
-            400: "",
+            400: ErrorResponseSerializer,
+            401: ErrorResponseSerializer,
             #TODO: ADD OTHER ERRORS
         },
     )
@@ -135,7 +137,8 @@ class ProjectEditDeleteView(APIView):
         tags=tags,
         responses={
             200: SuccessResponseSerializer, 
-            400: "",
+            400: ErrorDataResponseSerializer,
+            401: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
             #TODO: ADD OTHER ERRORS
         },
@@ -155,7 +158,8 @@ class ProjectEditDeleteView(APIView):
         description="This endpoint allows authenticated users to delete an existing project. Only the project owner can delete the project. The project will be permanently removed from the system.",
         tags=tags,
         responses={
-            204: None,  # Successfully deleted project (no content in response body)
+            204: ErrorResponseSerializer,  # Successfully deleted project (no content in response body)
+            401: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
         },
     )
@@ -177,8 +181,9 @@ class TagCreateView(APIView):
         description="This endpoint allows authenticated users to create a new tag. Tags can be used to categorize or organize projects. Only authenticated users are allowed to create new tags.",
         tags=tags,
         responses={
-            201: TagSerializer,  # Successfully created tag
+            201: SuccessResponseSerializer,  # Successfully created tag
             400: ErrorResponseSerializer,  # Validation error or bad request
+            401: ErrorResponseSerializer,
         }, 
     )
 
@@ -212,9 +217,10 @@ class TagRemoveView(APIView):
         description="This endpoint allows authenticated users to remove a specific tag from a project. The user must be authenticated and the tag will be removed based on the provided project slug and tag ID.",
         tags=tags,
         responses={
-            204: None,  # Successfully removed tag
-            404: ErrorDataResponseSerializer,  # Project or tag not found
+            204: SuccessResponseSerializer,  # Successfully removed tag
+            404: ErrorResponseSerializer,  # Project or tag not found
             400: ErrorResponseSerializer,  # Bad request
+            401: ErrorResponseSerializer,
         },
     ) 
 
@@ -253,10 +259,11 @@ class ReviewCreateView(APIView):
         description="This endpoint allows authenticated users to submit a review for a specific project. Users cannot review their own project, and they can only submit one review per project. The review will be associated with the project and the user submitting it.",
         tags=tags,
         responses={
-            201: ReviewSerializer,  # Successfully created review
+            201: SuccessResponseSerializer,  # Successfully created review
             400: ErrorDataResponseSerializer,  # User already reviewed this project
-            403: ErrorDataResponseSerializer,  # User cannot review their own project
+            403: ErrorResponseSerializer,  # User cannot review their own project
             404: ErrorResponseSerializer,  # Project not found
+            401: ErrorResponseSerializer,
         },
     )
 
@@ -302,7 +309,7 @@ class ProjectReviewListView(APIView):
         description="This endpoint allows users to retrieve a list of all reviews for a specific project. It provides a collection of reviews with details such as the reviewer, rating, and feedback for the project.",
         tags=tags,
         responses={
-            200: ReviewSerializer(many=True),  # List of reviews for the project
+            200: SuccessResponseSerializer,  # List of reviews for the project
             404: ErrorResponseSerializer,  # Project not found
         },
     )
