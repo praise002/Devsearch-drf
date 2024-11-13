@@ -24,7 +24,7 @@ class EmailThread(threading.Thread):
 class SendEmail:
 
     @staticmethod
-    def send_otp(request, user):
+    def send_email(request, user):
         domain = f"{request.scheme}://{request.get_host()}"  # http www.example.com
         otp = generate_otp(user)
         subject = "Verify your email"
@@ -35,7 +35,7 @@ class SendEmail:
             "email": email,
             "otp": otp,
         }
-        message = render_to_string("otp_email_message.html", context)
+        message = render_to_string("verify_email_request.html", context)
         email_message = EmailMessage(subject=subject, body=message, to=[email])
         email_message.content_subtype = "html"
         EmailThread(email_message).start()
@@ -54,7 +54,7 @@ class SendEmail:
         EmailThread(email_message).start()
 
     @staticmethod
-    def send_password_reset_otp(request, user):
+    def send_password_reset_email(request, user):
         domain = f"{request.scheme}://{request.get_host()}"  # http www.example.com
         otp = generate_otp(user)
         subject = "Your Password Reset OTP"
@@ -65,7 +65,7 @@ class SendEmail:
             "email": email,
             "otp": otp,
         }
-        message = render_to_string("password_reset_otp.html", context)
+        message = render_to_string("password_reset_email.html", context)
         email_message = EmailMessage(subject=subject, body=message, to=[email])
         email_message.content_subtype = "html"
         EmailThread(email_message).start()

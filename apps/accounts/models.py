@@ -8,8 +8,10 @@ from autoslug import AutoSlugField
 from .managers import CustomUserManager
 import uuid
 
+
 def slugify_two_fields(self):
     return f"{self.first_name}-{self.last_name}"
+
 
 class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True)
@@ -19,52 +21,54 @@ class User(AbstractBaseUser, PermissionsMixin):
         _("Username"), populate_from=slugify_two_fields, unique=True, always_update=True
     )
     email = models.EmailField(_("Email address"), unique=True)
-    
+
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_superuser = models.BooleanField(default=False)
     is_email_verified = models.BooleanField(default=False)
     user_active = models.BooleanField(default=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]
-    
+
     objects = CustomUserManager()
-    
+
     class Meta:
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['username']),
+            models.Index(fields=["username"]),
         ]
-    
+
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
-    
-    
+
     def __str__(self):
         return self.full_name
-    
+
+
 class Otp(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     otp = models.IntegerField(null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     def __str__(self):
         return str(self.otp)
-    
+
     @property
     def is_valid(self):
-        expiration_time = self.created_at + \
-            timedelta(minutes=settings.EMAIL_OTP_EXPIRE_MINUTES)
+        expiration_time = self.created_at + timedelta(
+            minutes=settings.EMAIL_OTP_EXPIRE_MINUTES
+        )
         return timezone.now() < expiration_time
-    
+
     @classmethod
     def generate_otp(cls, user):
         pass
+
 
 # @classmethod
 #     def generate_otp(cls, user):
@@ -74,10 +78,10 @@ class Otp(models.Model):
 #         return otp_instance
 
 # Clear previous OTPs
-        # Otp.objects.filter(user=user).delete()
-        
-        # # Generate OTP directly from Otp model and send email
-        # otp_instance = Otp.generate_otp(user)
-        # SendEmail.send_otp(request, user, otp_instance.otp)
-        
-        # ask the diff btw it and static method
+# Otp.objects.filter(user=user).delete()
+
+# # Generate OTP directly from Otp model and send email
+# otp_instance = Otp.generate_otp(user)
+# SendEmail.send_email(request, user, otp_instance.otp)
+
+# ask the diff btw it and static method

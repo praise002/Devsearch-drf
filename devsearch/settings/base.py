@@ -198,13 +198,15 @@ SPECTACULAR_SETTINGS = {
 } 
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1), # change to 5 minutes
     "REFRESH_TOKEN_LIFETIME": timedelta(days=90),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,  # This will blacklist tokens after use
 }
 
 EMAIL_OTP_EXPIRE_MINUTES = 15
+
+# FRONTEND_URL = config("FRONTEND_URL")
 
 # JAZZMIN_SETTINGS = {
 #     # title of the window (Will default to current_admin_site.site_title if absent or None)

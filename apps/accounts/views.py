@@ -54,7 +54,7 @@ class RegisterView(APIView):
         data = serializer.validated_data
 
         # Send OTP for email verification
-        SendEmail.send_otp(request, user)
+        SendEmail.send_email(request, user)
 
         return Response(
             {
@@ -88,8 +88,8 @@ class LoginView(TokenObtainPairView):
                 return Response(
                     {
                         "message": "Email not verified. Please verify your email before logging in.",
-                        "next_action": "send_otp",  # Inform the client to call SendOtpView
-                        "email": user.email,  # Send back the email to pass it to SendOtpView
+                        "next_action": "send_email",  # Inform the client to call SendVerificationEmailView
+                        "email": user.email,  # Send back the email to pass it to SendVerificationEmailView
                     },
                     status=status.HTTP_403_FORBIDDEN,
                 )
@@ -103,7 +103,7 @@ class LoginView(TokenObtainPairView):
         return super().post(request, *args, **kwargs)
 
 
-class SendOtpView(APIView):
+class SendVerificationEmailView(APIView):
     serializer_class = SendOtpSerializer
     permission_classes = (IsUnauthenticated,)
 
@@ -135,14 +135,14 @@ class SendOtpView(APIView):
         Otp.objects.filter(user=user).delete()
 
         # Send OTP to user's email
-        SendEmail.send_otp(request, user)
+        SendEmail.send_email(request, user)
 
         return Response(
             {"message": "OTP sent successfully."}, status=status.HTTP_200_OK
         )
 
 
-class VerifyOtpView(APIView):
+class VerifyEmailView(APIView):
     serializer_class = VerifyOtpSerializer
     permission_classes = (IsUnauthenticated,)
 
@@ -178,7 +178,7 @@ class VerifyOtpView(APIView):
             otp_record = Otp.objects.get(user=user, otp=otp)
         except Otp.DoesNotExist:
             return Response(
-                {"error": "Invalid OTP provided."}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "Invalid OTP provided."}, status=status.HTTP_404_NOT_FOUND
             )
 
         # Check if OTP is expired
@@ -187,17 +187,18 @@ class VerifyOtpView(APIView):
                 {
                     "error": "OTP has expired.",
                     "next_action": "request_new_otp",
-                    "request_url": "/api/v1/auth/send-otp/",
+                    "request_url": "/api/v1/auth/otp",
                 },
                 status=status.HTTP_410_GONE,
-            )
+            ) # NOTE: or create a 498 status code
 
         # Check if user is already verified
         if user.is_email_verified:
             # Clear the OTP
             Otp.objects.filter(user=user).delete()
             return Response(
-                {"error": "Email address already verified!"},
+                {"message": "Email address already verified!"},
+                status=status.HTTP_200_OK
             )
 
         user.is_email_verified = True
@@ -221,7 +222,7 @@ class LogoutView(APIView):
         summary="Logout a user",
         description="This endpoint logs a user out from our application",
         responses={
-            205: SuccessResponseSerializer,
+            200: SuccessResponseSerializer,
             401: ErrorResponseSerializer,
         },
         tags=tags,
@@ -232,7 +233,7 @@ class LogoutView(APIView):
             token = RefreshToken(refresh_token)
             token.blacklist()
             return Response(
-                {"message": "Logout successful."}, status=status.HTTP_205_RESET_CONTENT
+                {"message": "Logout successful."}, status=status.HTTP_200_OK
             )
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -294,14 +295,14 @@ class PasswordResetRequestView(APIView):
         Otp.objects.filter(user=user).delete()
 
         # Send OTP to user's email
-        SendEmail.send_password_reset_otp(request, user)
+        SendEmail.send_password_reset_email(request, user)
 
         return Response(
             {"message": "OTP sent successfully."}, status=status.HTTP_200_OK
         )
 
 
-class PasswordResetConfirmView(APIView):
+class PasswordResetDoneView(APIView):
     permission_classes = (IsUnauthenticated,)
     serializer_class = ResetPasswordWithOtpSerializer
 
