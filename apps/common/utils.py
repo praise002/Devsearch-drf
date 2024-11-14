@@ -1,5 +1,4 @@
 from apps.accounts.models import User
-from apps.accounts.auth import Authentication
 
 class TestUtil:
     def new_user():
@@ -37,10 +36,4 @@ class TestUtil:
         user = User.objects.create_user(**user_dict)
         return user
     
-    def auth_token(verified_user):
-        verified_user.access = Authentication.create_access_token(
-            {"user_id": str(verified_user.id), "username": verified_user.username}
-        )
-        verified_user.refresh = Authentication.create_refresh_token()
-        verified_user.save()
-        return verified_user.access
+    

@@ -2,12 +2,13 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 # from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from apps.common.serializers import SuccessResponseSerializer
-from .models import Otp, User
+from .models import  User
 
 
 # REQUEST SERIALIZERS
@@ -83,15 +84,34 @@ class PasswordChangeSerializer(serializers.Serializer):
                 {"error": "Password must be at least 8 characters long."}
             )
         return value
+    
+    def save(self, **kwargs):
+        user = self.context["request"].user
+        new_password = self.validated_data["new_password"]
+        user.set_password(new_password)
+        user.save() #TODO: MIGHT MOVE LATER
 
 
 class RequestPasswordResetOtpSerializer(serializers.Serializer):
     email = serializers.EmailField()
-
-class ResetPasswordWithOtpSerializer(serializers.Serializer):
+    
+class VerifyOtpSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    otp = serializers.IntegerField()
+    otp = serializers.IntegerField(
+        validators=[MinValueValidator(100000), MaxValueValidator(999999)]
+    )
+    
+
+class SetNewPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
     new_password = serializers.CharField(write_only=True)
+    
+    def validate_new_password(self, value):
+        try:
+            validate_password(value)  # This invokes all default password validators
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.messages)  # Raise any validation errors
+        return value
 
 
 # RESPONSES

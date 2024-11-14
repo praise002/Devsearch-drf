@@ -12,8 +12,8 @@ from .serializers import (
     PasswordChangeSerializer,
     RegisterSerializer,
     RequestPasswordResetOtpSerializer,
-    ResetPasswordWithOtpSerializer,
     SendOtpSerializer,
+    SetNewPasswordSerializer,
     VerifyOtpSerializer,
     CustomTokenObtainPairSerializer,
     RegisterResponseSerializer,
@@ -248,7 +248,8 @@ class PasswordChangeView(APIView):
         description="This endpoint allows authenticated users to update their account password. The user must provide their current password for verification along with the new password they wish to set. If successful, the password will be updated, and a response will confirm the change.",
         responses={
             200: SuccessResponseSerializer,
-            422: ErrorDataResponseSerializer,
+            400: ErrorDataResponseSerializer,
+            401: ErrorResponseSerializer,
         },
         tags=tags,
     )
@@ -288,7 +289,7 @@ class PasswordResetRequestView(APIView):
         except User.DoesNotExist:
             return Response(
                 {"error": "User with this email does not exist."},
-                status_code=status.HTTP_404_NOT_FOUND,
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         # Clear otps if another otp is requested
@@ -301,17 +302,16 @@ class PasswordResetRequestView(APIView):
             {"message": "OTP sent successfully."}, status=status.HTTP_200_OK
         )
 
-
-class PasswordResetDoneView(APIView):
+class VerifyOtpView(APIView):
     permission_classes = (IsUnauthenticated,)
-    serializer_class = ResetPasswordWithOtpSerializer
-
+    serializer_class = VerifyOtpSerializer
+    
     @extend_schema(
-        summary="Set New Password",
-        description="This endpoint verifies the password reset OTP and sets a new password if the OTP is valid.",
+        summary="Verify password reset otp",
+        description="This endpoint verifies the password reset OTP.",
         responses={
             200: SuccessResponseSerializer,
-            400: ErrorDataResponseSerializer,
+            400: ErrorDataResponseSerializer, 
             404: ErrorResponseSerializer,
             410: ErrorResponseSerializer,
         },
@@ -321,8 +321,6 @@ class PasswordResetDoneView(APIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        # This call will set the new password and save the user instance
-        serializer.save()
 
         email = serializer.validated_data["email"]
         otp = serializer.validated_data["otp"]
@@ -340,7 +338,7 @@ class PasswordResetDoneView(APIView):
             otp_record = Otp.objects.get(user=user, otp=otp)
         except Otp.DoesNotExist:
             return Response(
-                {"error": "Invalid OTP provided."}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "The OTP could not be found. Please enter a valid OTP or request a new one."}, status=status.HTTP_404_NOT_FOUND
             )
 
         # Check if OTP is expired
@@ -348,18 +346,54 @@ class PasswordResetDoneView(APIView):
             return Response(
                 {
                     "error": "OTP has expired. Please request a new one.",
-                    "next_action": "request_new_otp",
                 },
                 status=status.HTTP_410_GONE,
             )
-
-        # Update the user's password
-        new_password = serializer.validated_data["new_password"]
-        user.set_password(new_password)
-        user.save()
-
+            
         # Clear OTP after verification
         Otp.objects.filter(user=user).delete()
+        
+        return Response(
+            {"message": "OTP verified, proceed to set new password."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordResetDoneView(APIView):
+    permission_classes = (IsUnauthenticated,)
+    serializer_class = SetNewPasswordSerializer
+
+    @extend_schema(
+        summary="Set New Password",
+        description="This endpoint sets a new password if the OTP is valid.",
+        responses={
+            200: SuccessResponseSerializer,
+            400: ErrorDataResponseSerializer,
+            404: ErrorResponseSerializer,
+        },
+        tags=tags,
+        auth=[],
+    )
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        # This call will set the new password and save the user instance
+        # serializer.save()
+
+        email = serializer.validated_data["email"]
+        new_password = serializer.validated_data["new_password"]
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "No account is associated with this email."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Update the user's password
+        user.set_password(new_password)
+        user.save()
 
         SendEmail.password_reset_success(request, user)
 
@@ -376,7 +410,7 @@ class RefreshTokensView(TokenRefreshView):
         tags=tags,
         responses={
             200: SuccessResponseSerializer,  # response schema for successful token refresh
-            401: ErrorDataResponseSerializer,
+            401: ErrorResponseSerializer,
         },
     )
     def post(self, request, *args, **kwargs):

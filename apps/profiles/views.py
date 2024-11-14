@@ -9,7 +9,7 @@ from django.http import Http404
 from drf_spectacular.utils import extend_schema
 
 from apps.accounts.validators import validate_uuid
-from apps.common.serializers import ErrorResponseSerializer, SuccessResponseSerializer
+from apps.common.serializers import ErrorDataResponseSerializer, ErrorResponseSerializer, SuccessResponseSerializer
 
 from .models import Profile, Skill
 from .serializers import ProfileSerializer, SkillSerializer
@@ -27,7 +27,6 @@ class MyProfileView(APIView):  # view account and edit it
         responses={
             200: SuccessResponseSerializer, 
             401: ErrorResponseSerializer,
-            #TODO: ADD OTHER ERRORS
         },
     )
 
@@ -41,9 +40,9 @@ class MyProfileView(APIView):  # view account and edit it
         description="This endpoint allows authenticated users to edit their profile details. Users can update their personal information. Only the account owner can modify their profile.",
         tags=tags,
         responses={
-            200: SuccessResponseSerializer, 
+            200: SuccessResponseSerializer,
+            400: ErrorDataResponseSerializer, 
             401: ErrorResponseSerializer,
-            #TODO: ADD OTHER ERRORS
         },
     )
     def patch(self, request):
@@ -64,7 +63,6 @@ class ProfileListView(
         tags=tags,
         responses={
             200: SuccessResponseSerializer,
-            #TODO: ADD OTHER ERRORS
         },
     )
     
@@ -82,17 +80,15 @@ class ProfileDetailView(APIView):
     @extend_schema(
         summary="View a user's profile details",
         description="This endpoint allows any user, whether authenticated or not, to view detailed information about a specific user's profile. It provides publicly available details such as the user's name, bio, and other visible information, depending on profile settings. This information is accessible to anyone.",
-        # operation_id="retrieve_profile_by_username",
         tags=tags,
         responses={
             200: SuccessResponseSerializer,
             404: ErrorResponseSerializer,
-            #TODO: ADD OTHER ERRORS
         },
     )
     
     def get(self, request, username):
-        try:  # TODO: USE GET_OBJ_OR_404
+        try:  
             profile = (
                 Profile.objects.select_related("user")
                 .prefetch_related("skills")
@@ -100,8 +96,10 @@ class ProfileDetailView(APIView):
             )
             serializer = self.serializer_class(profile)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        except Profile.DoesNotExist:
-            raise Http404("Profile not found.")
+        except Profile.DoesNotExist: 
+            # raise Http404("Profile not found.")
+            return Response(
+                {"error": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
 
 
 class SkillCreateView(APIView):
@@ -114,7 +112,8 @@ class SkillCreateView(APIView):
         tags=tags,
         responses={
             201: SuccessResponseSerializer,
-            #TODO: ADD OTHER ERRORS
+            400: ErrorDataResponseSerializer,
+            401: ErrorResponseSerializer,
         },
     )
 
@@ -142,7 +141,6 @@ class SkillDetailView(APIView):  # detail, edit, delete
             200: SuccessResponseSerializer,
             401: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
-            #TODO: ADD OTHER ERRORS
         },
     )
     
@@ -157,9 +155,9 @@ class SkillDetailView(APIView):  # detail, edit, delete
         tags=tags,
         responses={
             200: SuccessResponseSerializer,
+            400: ErrorDataResponseSerializer,
             401: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
-            #TODO: ADD OTHER ERRORS
         },
     )
     
@@ -175,10 +173,9 @@ class SkillDetailView(APIView):  # detail, edit, delete
         description="This endpoint allows authenticated users to delete a specific skill from their profile. Users must be logged in to access this functionality, as it is restricted to authenticated users only.",
         tags=tags,
         responses={
-            200: SuccessResponseSerializer,
+            204: SuccessResponseSerializer,
             401: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
-            #TODO: ADD OTHER ERRORS
         },
     )
     
