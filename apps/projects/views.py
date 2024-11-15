@@ -1,3 +1,4 @@
+from django.http import Http404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -7,6 +8,7 @@ from django.shortcuts import get_object_or_404
 
 from drf_spectacular.utils import extend_schema
 
+from apps.accounts.validators import validate_uuid
 from apps.common.serializers import ErrorDataResponseSerializer, ErrorResponseSerializer, SuccessResponseSerializer
 
 from .models import Project, Tag, Review
@@ -24,7 +26,6 @@ class ProjectListView(APIView):
         tags=tags,
         responses={
             200: SuccessResponseSerializer, 
-            #TODO: ADD OTHER ERRORS
         },
     )
     
@@ -44,7 +45,6 @@ class ProjectDetailView(APIView):
         responses={
             200: SuccessResponseSerializer, 
             404: ErrorResponseSerializer,
-            #TODO: ADD OTHER ERRORS
         },
     )
     
@@ -76,7 +76,6 @@ class RelatedProjectsView(APIView):
         responses={
             200: SuccessResponseSerializer, 
             404: ErrorResponseSerializer,
-            #TODO: ADD OTHER ERRORS
         },
     )
 
@@ -116,7 +115,6 @@ class ProjectCreateView(APIView):
             200: SuccessResponseSerializer, 
             400: ErrorResponseSerializer,
             401: ErrorResponseSerializer,
-            #TODO: ADD OTHER ERRORS
         },
     )
 
@@ -140,7 +138,6 @@ class ProjectEditDeleteView(APIView):
             400: ErrorDataResponseSerializer,
             401: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
-            #TODO: ADD OTHER ERRORS
         },
     )
 
@@ -178,7 +175,7 @@ class TagCreateView(APIView):
 
     @extend_schema(
         summary="Create a new tag",
-        description="This endpoint allows authenticated users to create a new tag. Tags can be used to categorize or organize projects. Only authenticated users are allowed to create new tags.",
+        description="This endpoint allows authenticated users to create a new tag. Tags can be used to categorize or organize projects. Only authenticated users are allowed to create new tags. Tags are converted to lowercase when created.",
         tags=tags,
         responses={
             201: SuccessResponseSerializer,  # Successfully created tag
@@ -211,6 +208,11 @@ class TagCreateView(APIView):
 
 class TagRemoveView(APIView):
     permission_classes = (IsAuthenticated,)
+    
+    def get_object(self, id):
+        if not validate_uuid(id): 
+            raise Http404("Invalid tag id")
+        return get_object_or_404(Tag, pk=id)
 
     @extend_schema(
         summary="Remove a tag from a project",
@@ -219,7 +221,6 @@ class TagRemoveView(APIView):
         responses={
             204: SuccessResponseSerializer,  # Successfully removed tag
             404: ErrorResponseSerializer,  # Project or tag not found
-            400: ErrorResponseSerializer,  # Bad request
             401: ErrorResponseSerializer,
         },
     ) 
@@ -232,13 +233,13 @@ class TagRemoveView(APIView):
         project = get_object_or_404(profile.projects, slug=project_slug)
 
         # Get the tag based on the tag ID
-        tag = get_object_or_404(Tag, pk=tag_id)
+        tag = self.get_object(tag_id)
 
         # Check if the tag is associated with the project
         if tag not in project.tags.all():
             return Response(
                 {"error": "Tag not associated with this project."},
-                status=status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         # Remove the association of this tag from the project
@@ -316,8 +317,14 @@ class ProjectReviewListView(APIView):
 
 
     def get(self, request, slug):
-        # Retrieve all reviews for the specified project ID
-        reviews = Review.objects.filter(project__slug=slug)
+        try:
+            project = Project.objects.get(slug=slug)
+        except Project.DoesNotExist:
+            raise Http404("Project not found")
+        
+        # Retrieve all reviews for the specified project 
+        reviews = Review.objects.filter(project=project)
+        
         # Serialize the queryset
         serializer = self.serializer_class(reviews, many=True)
         # Return serialized data in response

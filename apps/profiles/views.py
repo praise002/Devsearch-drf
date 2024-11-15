@@ -22,7 +22,7 @@ class MyProfileView(APIView):  # view account and edit it
     
     @extend_schema(
         summary="View a user profile",
-        description="This endpoint allows authenticated users to view their profile details. Users can retrieve their account information, including name, email, and other personal data. Only the account owner can access their profile.",
+        description="This endpoint allows authenticated users to view their profile details. Users can retrieve their account information. Only the account owner can access their profile.",
         tags=tags,
         responses={
             200: SuccessResponseSerializer, 
@@ -58,7 +58,7 @@ class ProfileListView(
 ):  # TODO: MIGHT CREATE A DIFF SERIALIZER LATER FOR ONLY WHAT IS NEEDED
     @extend_schema(
         summary="Retrieve a list of user profiles",
-        description="This endpoint allows authenticated and unauthenticated users to view a list of all user profiles in the system. It returns essential details about each profile, such as name, email, and other public information.",
+        description="This endpoint allows authenticated and unauthenticated users to view a list of all user profiles in the system. It returns essential details about each profile.",
         operation_id="list_profiles",  # Unique operationId
         tags=tags,
         responses={
@@ -79,7 +79,7 @@ class ProfileDetailView(APIView):
     
     @extend_schema(
         summary="View a user's profile details",
-        description="This endpoint allows any user, whether authenticated or not, to view detailed information about a specific user's profile. It provides publicly available details such as the user's name, bio, and other visible information, depending on profile settings. This information is accessible to anyone.",
+        description="This endpoint allows any user, whether authenticated or not, to view detailed information about a specific user's profile. It provides publicly available details. This information is accessible to anyone.",
         tags=tags,
         responses={
             200: SuccessResponseSerializer,
@@ -155,7 +155,6 @@ class SkillDetailView(APIView):  # detail, edit, delete
         tags=tags,
         responses={
             200: SuccessResponseSerializer,
-            400: ErrorDataResponseSerializer,
             401: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
         },

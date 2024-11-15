@@ -13,7 +13,7 @@ class TestProjects(APITestCase):
     def setUp(self):
         # user
         verified_user = TestUtil.verified_user()
-        another_verified_user = TestUtil.another_verified_user()
+        # another_verified_user = TestUtil.another_verified_user()
         self.verified_user = verified_user
 
         # auth
