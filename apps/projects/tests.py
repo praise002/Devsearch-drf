@@ -24,17 +24,14 @@ class TestProjects(APITestCase):
 
     def setUp(self):
         # user
-        verified_user = TestUtil.verified_user()
-        other_verified_user = TestUtil.other_verified_user()
-        self.verified_user = verified_user
-        self.other_verified_user = other_verified_user
+        self.verified_user = TestUtil.verified_user()
+        self.other_verified_user = TestUtil.other_verified_user()
 
         # auth
-        verified_user = self.verified_user
         login_response = self.client.post(
             self.login_url,
             {
-                "email": verified_user.email,
+                "email": self.verified_user.email,
                 "password": "testpassword",
             },
         )

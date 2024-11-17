@@ -131,7 +131,12 @@ class SkillDetailView(APIView):  # detail, edit, delete
     def get_object(self, id):
         if not validate_uuid(id):
             raise Http404("Invalid skill id")
-        return get_object_or_404(Skill, id=id, user=self.request.user.profile)
+        
+        try:
+            skill = Skill.objects.get(id=id, user=self.request.user.profile)
+            return skill
+        except Skill.DoesNotExist:
+            raise Http404("Skill not found.")
 
     @extend_schema(
         summary="View a specific skill",

@@ -13,17 +13,14 @@ class TestProfile(APITestCase):
 
     def setUp(self):
         # user
-        verified_user = TestUtil.verified_user()
-        other_verified_user = TestUtil.other_verified_user()
-        self.verified_user = verified_user
-        self.other_verified_user = other_verified_user
+        self.verified_user = TestUtil.verified_user()
+        self.other_verified_user = TestUtil.other_verified_user()
 
         # auth
-        verified_user = self.verified_user
         login_response = self.client.post(
             self.login_url,
             {
-                "email": verified_user.email,
+                "email": self.verified_user.email,
                 "password": "testpassword",
             },
         )
@@ -120,15 +117,13 @@ class TestProfile(APITestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_skill_detail_get(self):
-        verified_user = self.verified_user
-        profile = TestUtil.get_profile(user=verified_user)
+        profile = TestUtil.get_profile(user=self.verified_user)
         skill = TestUtil.add_skill("Django", profile)
         skill_id = skill.id
         
-        other_verified_user = self.other_verified_user
-        other_profile = TestUtil.get_profile(user=other_verified_user)
+        other_profile = TestUtil.get_profile(user=self.other_verified_user)
         other_skill = TestUtil.add_skill("FASTAPI", other_profile)
-        other_skill_id = other_skill.id # TODO: FIX REPITITION LATER
+        other_skill_id = other_skill.id 
 
         # Authenticated User
         response = self.client.get(
@@ -166,15 +161,13 @@ class TestProfile(APITestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_skill_detail_put(self):
-        verified_user = self.verified_user
-        profile = TestUtil.get_profile(user=verified_user)
+        profile = TestUtil.get_profile(user=self.verified_user)
         skill = TestUtil.add_skill("Django", profile)
         skill_id = skill.id
         
-        other_verified_user = self.other_verified_user
-        other_profile = TestUtil.get_profile(user=other_verified_user)
+        other_profile = TestUtil.get_profile(user=self.other_verified_user)
         other_skill = TestUtil.add_skill("FASTAPI", other_profile)
-        other_skill_id = other_skill.id # TODO: FIX REPITITION LATER
+        other_skill_id = other_skill.id 
 
         # Authenticated User
         response = self.client.put(
@@ -211,15 +204,13 @@ class TestProfile(APITestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_skill_detail_delete(self):
-        verified_user = self.verified_user
-        profile = TestUtil.get_profile(user=verified_user)
+        profile = TestUtil.get_profile(user=self.verified_user)
         skill = TestUtil.add_skill("Django", profile)
         skill_id = skill.id
         
-        other_verified_user = self.other_verified_user
-        other_profile = TestUtil.get_profile(user=other_verified_user)
+        other_profile = TestUtil.get_profile(user=self.other_verified_user)
         other_skill = TestUtil.add_skill("FASTAPI", other_profile)
-        other_skill_id = other_skill.id # TODO: FIX REPITITION LATER
+        other_skill_id = other_skill.id 
 
         # Authenticated User
         response = self.client.delete(

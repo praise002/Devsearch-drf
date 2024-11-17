@@ -4,7 +4,6 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.shortcuts import get_object_or_404
 
 from drf_spectacular.utils import extend_schema
 from drf_spectacular.utils import OpenApiResponse
@@ -73,12 +72,17 @@ class ViewMessage(APIView):
     )
     def get(self, request, id):
         if not validate_uuid(id):
-            raise Http404("Invalid message id")
+            raise Http404("Invalid message ID")
 
-        message = get_object_or_404(
-            request.user.profile.messages.select_related("sender__user", "recipient"),
-            id=id,
-        )
+        try:
+            message = request.user.profile.messages.select_related(
+                "sender__user", "recipient"
+            ).get(id=id)
+        except Message.DoesNotExist:
+            return Response(
+                {"error": "Message not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
         serializer = MessageSerializer(message)
 
         # Mark the message as read if it's currently unread
@@ -100,18 +104,20 @@ class CreateMessage(APIView):
                 response=MessageSerializer,
                 description="Message successfully created and sent.",
             ),
-            400: OpenApiResponse(
-                description="Bad request - validation error."
-            ),
+            400: OpenApiResponse(description="Bad request - validation error."),
             404: OpenApiResponse(
                 description="Recipient profile not found or invalid profile ID."
             ),
         },
     )
-    def post(self, request, id):
-        if not validate_uuid(id):
+    def post(self, request, profile_id):
+        if not validate_uuid(profile_id):
             raise Http404("Invalid profile id")
-        recipient = get_object_or_404(Profile, id=id)
+
+        try:
+            recipient = Profile.objects.get(id=profile_id)
+        except Profile.DoesNotExist:
+            raise Http404("Profile not found.")
 
         # try:
         #     sender = request.user.profile
@@ -153,14 +159,17 @@ class DeleteMessage(APIView):
             ),
         },
     )
-    def delete(self, request, id):
-        if not validate_uuid(id):
+    def delete(self, request, message_id):
+        if not validate_uuid(message_id):
             raise Http404("Invalid message id")
 
-        message = get_object_or_404(Message, id=id, recipient=request.user.profile)
+        try:
+            message = Message.objects.get(id=message_id, recipient=request.user.profile)
+        except Message.DoesNotExist:
+            raise Http404("Message not found.")
 
         message.delete()
         return Response(
-            {"detail": "Message deleted successfully."},
+            {"message": "Message deleted successfully."},
             status=status.HTTP_204_NO_CONTENT,
         )

@@ -421,5 +421,3 @@ class RefreshTokensView(TokenRefreshView):
 
         return response
 
-
-# WRITE TEST TO TEST ALL CASES OF RESPONSE ERROR
