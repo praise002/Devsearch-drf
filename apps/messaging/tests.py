@@ -93,19 +93,16 @@ class TestMessages(APITestCase):
 
         # Test that unauthenticated users can send a message to another user.
         response = self.client.post(url, data)
-        print(response.json())
         self.assertEqual(response.status_code, 201)
 
         # Test that users cannot message themselves.
         url = self.create_message_url.format(profile_id=self.verified_user.profile.id)
         response = self.client.post(url, data, **self.bearer)
-        print(response.json())
         self.assertEqual(response.status_code, 400)
 
         # Test that a 404 error is returned for an invalid recipient ID.
         url = self.create_message_url.format(profile_id="invalid-profile_id")
         response = self.client.post(url, data, **self.bearer)
-        print(response.json())
         self.assertEqual(response.status_code, 404)
 
         # Test that a 404 error is returned for an non-existent recipient ID.

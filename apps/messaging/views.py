@@ -10,6 +10,7 @@ from drf_spectacular.utils import OpenApiResponse
 
 
 from apps.accounts.validators import validate_uuid
+from apps.common.paginators import CustomPagination
 from apps.common.serializers import ErrorResponseSerializer
 from apps.profiles.models import Profile
 from .models import Message
@@ -21,6 +22,9 @@ tags = ["Messages"]
 # View for listing inbox messages
 class InboxView(APIView):
     permission_classes = (IsAuthenticated,)
+    serializer_class = MessageSerializer
+    paginator_class = CustomPagination()
+    paginator_class.page_size = 10
 
     @extend_schema(
         summary="Retrieve user's inbox messages",
@@ -39,12 +43,23 @@ class InboxView(APIView):
     )
     def get(self, request):
         messages = Message.objects.filter(recipient=request.user.profile)
-        serializer = MessageSerializer(messages, many=True)
+        paginated_projects = self.paginator_class.paginate_queryset(messages, request)
+    
+        serializer = self.serializer_class(messages, many=True)
 
         unread_count = messages.filter(is_read=False).count()
-
+        
         return Response(
-            {"messages": serializer.data, "unread_count": unread_count},
+            {
+                "count": messages.count(),
+                "next": paginated_projects.get("next"),
+                "previous": paginated_projects.get("previous"),
+                "results": serializer.data,
+                "unread_count": unread_count,
+                "per_page": paginated_projects.get("per_page"),
+                "current_page": paginated_projects.get("current_page"),
+                "last_page": paginated_projects.get("last_page"),
+            },
             status=status.HTTP_200_OK,
         )
 

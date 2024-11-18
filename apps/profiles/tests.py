@@ -71,7 +71,7 @@ class TestProfile(APITestCase):
         TestUtil.delete_all_profiles()
         response = self.client.get(self.profile_list_url)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.json()), 0)
+        self.assertEqual(len(response.json().get('results')), 0)
 
     def test_profile_detail_get(self):
         # Successful retrieval
