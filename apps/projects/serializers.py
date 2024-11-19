@@ -1,4 +1,5 @@
 from rest_framework import serializers
+# from drf_spectacular.utils import extend_schema_field
 from .models import Tag, Project, Review
 from apps.profiles.models import Profile  # Assuming Profile exists in the profiles app
 

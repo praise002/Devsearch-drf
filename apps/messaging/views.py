@@ -4,14 +4,20 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
+from rest_framework.filters import SearchFilter
 
 from drf_spectacular.utils import extend_schema
-from drf_spectacular.utils import OpenApiResponse
+from drf_spectacular.utils import OpenApiResponse, OpenApiParameter
 
 
 from apps.accounts.validators import validate_uuid
-from apps.common.paginators import CustomPagination
-from apps.common.serializers import ErrorResponseSerializer
+from apps.common.pagination import CustomPagination
+from apps.common.serializers import (
+    ErrorDataResponseSerializer,
+    ErrorResponseSerializer,
+    SuccessResponseSerializer,
+)
 from apps.profiles.models import Profile
 from .models import Message
 from .serializers import MessageSerializer
@@ -33,7 +39,7 @@ class InboxView(APIView):
         responses={
             200: OpenApiResponse(
                 description="Successfully retrieved inbox messages and unread count",
-                response=MessageSerializer,
+                response=SuccessResponseSerializer,
             ),
             401: OpenApiResponse(
                 description="Unauthorized access - user must be authenticated",
@@ -44,11 +50,11 @@ class InboxView(APIView):
     def get(self, request):
         messages = Message.objects.filter(recipient=request.user.profile)
         paginated_projects = self.paginator_class.paginate_queryset(messages, request)
-    
+
         serializer = self.serializer_class(messages, many=True)
 
         unread_count = messages.filter(is_read=False).count()
-        
+
         return Response(
             {
                 "count": messages.count(),
@@ -63,10 +69,76 @@ class InboxView(APIView):
             status=status.HTTP_200_OK,
         )
 
+class InboxGenericView(ListAPIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = MessageSerializer
+    pagination_class = CustomPagination
+    filter_backends = [SearchFilter]
+    search_fields = ['subject', 'body']  
+
+    # TODO: FILTERING CUSTOM WITH DESCRIPTION
+    @extend_schema(
+        summary="Retrieve user's inbox messages",
+        description=(
+            "This endpoint allows authenticated users to view their inbox messages. "
+            "It supports filtering messages using a search term. Additionally, it provides "
+            "a count of unread messages."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="search",
+                description="Search messages by (e.g., subject or body).",
+                required=False,
+                type=str,
+            )
+        ], 
+        responses={
+            200: OpenApiResponse(
+                description="Successfully retrieved inbox messages and unread count",
+                response=SuccessResponseSerializer,
+            ),
+            401: OpenApiResponse(
+                description="Unauthorized access - user must be authenticated",
+                response=ErrorResponseSerializer,
+            ),
+        },
+        tags=tags,
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+    
+    def get_queryset(self):
+        """
+        Return the filtered queryset of messages for the authenticated user.
+        """
+        return Message.objects.filter(recipient=self.request.user.profile)
+
+    def list(self, request, *args, **kwargs):
+        """
+        Override the default list method to include unread_count in the response.
+        """
+        queryset = self.filter_queryset(self.get_queryset())  # Apply filters
+        page = self.paginate_queryset(queryset)
+
+        unread_count = self.get_queryset().filter(is_read=False).count()  # Unread count
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response({
+                "results": serializer.data,
+                "unread_count": unread_count,
+            })
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            "results": serializer.data,
+            "unread_count": unread_count,
+        })
 
 # View for viewing a specific message
 class ViewMessage(APIView):
     permission_classes = (IsAuthenticated,)
+    serializer_class = MessageSerializer
 
     @extend_schema(
         summary="Retrieve a specific message",
@@ -74,14 +146,16 @@ class ViewMessage(APIView):
         tags=tags,
         responses={
             200: OpenApiResponse(
-                response=MessageSerializer,
+                response=SuccessResponseSerializer,
                 description="Successfully retrieved the message details.",
             ),
             404: OpenApiResponse(
-                description="Message not found or invalid message ID."
+                description="Message not found or invalid message ID.",
+                response=ErrorResponseSerializer,
             ),
             401: OpenApiResponse(
-                description="Authentication credentials were not provided or invalid."
+                response=ErrorResponseSerializer,
+                description="Authentication credentials were not provided or invalid.",
             ),
         },
     )
@@ -98,7 +172,7 @@ class ViewMessage(APIView):
                 {"error": "Message not found."}, status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = MessageSerializer(message)
+        serializer = self.serializer_class(message)
 
         # Mark the message as read if it's currently unread
         if not message.is_read:
@@ -110,18 +184,24 @@ class ViewMessage(APIView):
 
 # View for creating a new message
 class CreateMessage(APIView):
+    serializer_class = MessageSerializer
+    
     @extend_schema(
         summary="Send a message to a specific user",
         description="This endpoint allows an anyone to send a message to a specific recipient by their profile ID. The sender's profile is automatically associated with the message if they are logged in. Users cannot message themselves.",
         tags=tags,
         responses={
             201: OpenApiResponse(
-                response=MessageSerializer,
+                response=SuccessResponseSerializer,
                 description="Message successfully created and sent.",
             ),
-            400: OpenApiResponse(description="Bad request - validation error."),
+            400: OpenApiResponse(
+                description="Bad request - validation error.",
+                response=ErrorDataResponseSerializer,
+            ),
             404: OpenApiResponse(
-                description="Recipient profile not found or invalid profile ID."
+                description="Recipient profile not found or invalid profile ID.",
+                response=ErrorResponseSerializer,
             ),
         },
     )
@@ -149,7 +229,7 @@ class CreateMessage(APIView):
 
         data["recipient"] = recipient.id
 
-        serializer = MessageSerializer(data=data)
+        serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
         serializer.save(sender=sender)
 
@@ -165,12 +245,17 @@ class DeleteMessage(APIView):
         description="This endpoint allows an authenticated user to delete a specific message they received. The message ID must be valid, and the message must belong to the authenticated user. Upon successful deletion, a confirmation message is returned.",
         tags=tags,
         responses={
-            204: OpenApiResponse(description="Message deleted successfully."),
+            204: OpenApiResponse(
+                description="Message deleted successfully.",
+                response=SuccessResponseSerializer,
+            ),
             404: OpenApiResponse(
-                description="Message not found or invalid message ID."
+                description="Message not found or invalid message ID.",
+                response=ErrorResponseSerializer,
             ),
             401: OpenApiResponse(
-                description="Authentication credentials were not provided."
+                description="Authentication credentials were not provided.",
+                response=ErrorResponseSerializer,
             ),
         },
     )

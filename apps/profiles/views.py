@@ -10,9 +10,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.http import Http404
 
 from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter
 
 from apps.accounts.validators import validate_uuid
-from apps.common.paginators import CustomPagination, DefaultPagination
+from apps.common.pagination import CustomPagination, DefaultPagination
 from apps.common.serializers import (
     ErrorDataResponseSerializer,
     ErrorResponseSerializer,
@@ -83,7 +84,7 @@ class ProfileListView(APIView):
 
         paginated_profiles = self.paginator_class.paginate_queryset(profiles, request)
         serializer = self.serializer_class(paginated_profiles, many=True)
-        
+
         return self.paginator_class.get_paginated_response(serializer.data)
 
 
@@ -94,21 +95,29 @@ class ProfileListGenericView(ListAPIView):
     filterset_class = ProfileFilter
     search_fields = ["bio", "short_intro", "skills__name"]
     pagination_class = DefaultPagination
-    
 
+    # TODO: FILTERING CUSTOM WITH DESCRIPTION
     @extend_schema(
         summary="Retrieve a list of user profiles",
         description="This endpoint allows authenticated and unauthenticated users to view a list of all user profiles in the system. It returns essential details about each profile.",
+        parameters=[
+            OpenApiParameter(
+                name="search",
+                description="Search across bio, short intro, and skills.",
+                required=False,
+                type=str,
+            )
+        ], 
         operation_id="list_profiles",
         tags=["Profiles"],
         responses={200: SuccessResponseSerializer},
-    )
+    ) 
     def get(self, request, *args, **kwargs):
         """
         Handle GET requests to retrieve profiles with pagination, search, and filtering.
         """
         return super().get(request, *args, **kwargs)
-
+    
 
 class ProfileDetailView(APIView):
     serializer_class = ProfileSerializer

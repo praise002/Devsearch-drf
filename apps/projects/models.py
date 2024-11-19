@@ -43,7 +43,7 @@ class Project(BaseModel):
         ]
 
     @property
-    def featured_image_url(self):
+    def featured_image_url(self) -> str:
         try:
             url = self.featured_image.url
         except:
@@ -59,7 +59,7 @@ class Project(BaseModel):
         return queryset
 
     @property
-    def review_percentage(self):
+    def review_percentage(self) -> float:
         """
         Calculate the positive feedback percentage based on votes.
         """
