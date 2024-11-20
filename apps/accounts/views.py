@@ -27,11 +27,9 @@ from apps.common.serializers import (
 )
 from .models import User, Otp
 from .permissions import IsUnauthenticated
-from rest_framework.permissions import AllowAny
 
 
 tags = ["Auth"]
-
 
 class RegisterView(APIView):
     serializer_class = RegisterSerializer
@@ -103,9 +101,10 @@ class LoginView(TokenObtainPairView):
         return super().post(request, *args, **kwargs)
 
 
-class SendVerificationEmailView(APIView):
+class ResendVerificationEmailView(APIView):
     serializer_class = SendOtpSerializer
     permission_classes = (IsUnauthenticated,)
+    throttle_scope = 'otp'
 
     @extend_schema(
         summary="Send OTP to a user's email",
@@ -267,6 +266,7 @@ class PasswordChangeView(APIView):
 class PasswordResetRequestView(APIView):
     permission_classes = (IsUnauthenticated,)
     serializer_class = RequestPasswordResetOtpSerializer
+    throttle_scope = 'otp'
 
     @extend_schema(
         summary="Send Password Reset Otp",

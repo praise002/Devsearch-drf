@@ -45,19 +45,18 @@ class ProjectListView(APIView):
         projects = Project.objects.select_related("owner").prefetch_related("tags")
         paginated_projects = self.paginator_class.paginate_queryset(projects, request)
         serializer = self.serializer_class(paginated_projects, many=True)
-        
+
         return self.paginator_class.get_paginated_response(serializer.data)
 
 
 class ProjectListGenericView(ListAPIView):
-    queryset = Project.objects.select_related("owner").prefetch_related("tags")
+    queryset = Project.objects.select_related("owner__user").prefetch_related("tags", "reviews")
     serializer_class = ProjectSerializer
     filter_backends = (DjangoFilterBackend, SearchFilter)
     filterset_class = ProjectFilter
     search_fields = ["title", "description", "tags__name"]
     pagination_class = DefaultPagination
 
-    # TODO: FILTERING CUSTOM WITH DESCRIPTION
     @extend_schema(
         summary="Retrieve a list of user projects",
         description="This endpoint allows authenticated and unauthenticated users to view a list of all user projects in the system.",
@@ -65,16 +64,18 @@ class ProjectListGenericView(ListAPIView):
             OpenApiParameter(
                 name="search",
                 description="Search across title, description, and tags.",
-                required=False,
-                type=str,
-            )
-        ], 
+            ),
+            OpenApiParameter(
+                name="tags",
+                description=("Filter projects by tags."),
+            ),
+        ],
         operation_id="list_projects",
         tags=tags,
         responses={
             200: SuccessResponseSerializer,
         },
-    ) #TODO: OVERRIDE SOME STUFFS
+    )
     def get(self, request, *args, **kwargs):
         """
         Handle GET requests to retrieve projects with pagination, search, and filtering.

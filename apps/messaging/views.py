@@ -69,14 +69,14 @@ class InboxView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
 class InboxGenericView(ListAPIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = MessageSerializer
     pagination_class = CustomPagination
     filter_backends = [SearchFilter]
-    search_fields = ['subject', 'body']  
+    search_fields = ["subject", "body"]
 
-    # TODO: FILTERING CUSTOM WITH DESCRIPTION
     @extend_schema(
         summary="Retrieve user's inbox messages",
         description=(
@@ -88,10 +88,8 @@ class InboxGenericView(ListAPIView):
             OpenApiParameter(
                 name="search",
                 description="Search messages by (e.g., subject or body).",
-                required=False,
-                type=str,
-            )
-        ], 
+            ),
+        ],
         responses={
             200: OpenApiResponse(
                 description="Successfully retrieved inbox messages and unread count",
@@ -106,7 +104,7 @@ class InboxGenericView(ListAPIView):
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
-    
+
     def get_queryset(self):
         """
         Return the filtered queryset of messages for the authenticated user.
@@ -124,16 +122,21 @@ class InboxGenericView(ListAPIView):
 
         if page is not None:
             serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response({
-                "results": serializer.data,
-                "unread_count": unread_count,
-            })
+            return self.get_paginated_response(
+                {
+                    "results": serializer.data,
+                    "unread_count": unread_count,
+                }
+            )
 
         serializer = self.get_serializer(queryset, many=True)
-        return Response({
-            "results": serializer.data,
-            "unread_count": unread_count,
-        })
+        return Response(
+            {
+                "results": serializer.data,
+                "unread_count": unread_count,
+            }
+        )
+
 
 # View for viewing a specific message
 class ViewMessage(APIView):
@@ -185,7 +188,7 @@ class ViewMessage(APIView):
 # View for creating a new message
 class CreateMessage(APIView):
     serializer_class = MessageSerializer
-    
+
     @extend_schema(
         summary="Send a message to a specific user",
         description="This endpoint allows an anyone to send a message to a specific recipient by their profile ID. The sender's profile is automatically associated with the message if they are logged in. Users cannot message themselves.",

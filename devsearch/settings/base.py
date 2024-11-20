@@ -50,6 +50,7 @@ THIRD_PARTY_APPS = [
     'debug_toolbar',
     'drf_spectacular',
     'django_filters',
+    "corsheaders",
 ]
 
 LOCAL_APPS = [
@@ -70,6 +71,7 @@ MIDDLEWARE = [
     'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -175,13 +177,19 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 
 # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-# PASSWORD_RESET_TIMEOUT = 900  # expires in 15 minutes
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_CLASSES': [
+        # 'rest_framework.throttling.ScopedRateThrottle',
+        'apps.accounts.throttles.EmailThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'otp': '100/day',
+    }
 }
 
 SPECTACULAR_SETTINGS = {
@@ -206,6 +214,10 @@ SIMPLE_JWT = {
 }
 
 EMAIL_OTP_EXPIRE_MINUTES = 15
+
+CORS_ALLOWED_ORIGINS = [
+    #TODO: ADD LATER
+]
 
 # FRONTEND_URL = config("FRONTEND_URL")
 

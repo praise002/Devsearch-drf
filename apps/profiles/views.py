@@ -5,7 +5,6 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.filters import SearchFilter
 
-from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from django.http import Http404
 
@@ -96,7 +95,6 @@ class ProfileListGenericView(ListAPIView):
     search_fields = ["bio", "short_intro", "skills__name"]
     pagination_class = DefaultPagination
 
-    # TODO: FILTERING CUSTOM WITH DESCRIPTION
     @extend_schema(
         summary="Retrieve a list of user profiles",
         description="This endpoint allows authenticated and unauthenticated users to view a list of all user profiles in the system. It returns essential details about each profile.",
@@ -104,9 +102,15 @@ class ProfileListGenericView(ListAPIView):
             OpenApiParameter(
                 name="search",
                 description="Search across bio, short intro, and skills.",
-                required=False,
-                type=str,
-            )
+            ),
+            OpenApiParameter(
+                name="skills",
+                description=("Filter profiles by skllls."),
+            ),
+            OpenApiParameter(
+                name="location",
+                description=("Filter profiles by location."),
+            ),
         ], 
         operation_id="list_profiles",
         tags=["Profiles"],
