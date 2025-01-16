@@ -56,7 +56,7 @@
 
 # Admin login
 <img src="./static/images/devsearch-admin-login.png">  
-v
+
 # Admin dashboard
 <img src="./static/images/devsearch-admin-dashboard-1.png">  
 <img src="./static/images/devsearch-admin-dashboard-2.png">  

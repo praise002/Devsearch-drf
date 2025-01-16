@@ -6,10 +6,10 @@ ENV_FILE_PARAM = --env-file .env
 endif
 
 create_env:
-	py -m venv env/catalog
+	py -m venv devapi
 
 act:
-	.\env\devapi\Scripts\activate
+	.\devapi\Scripts\activate
 
 mmig: 
 	python manage.py makemigrations
