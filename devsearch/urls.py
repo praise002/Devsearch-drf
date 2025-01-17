@@ -18,6 +18,8 @@ from apps.common.serializers import SuccessResponseSerializer
 
 
 class HealthCheckView(APIView):
+    serializer_class = None
+    
     @extend_schema(
         "/",
         summary="API Health Check",
