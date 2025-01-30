@@ -1,6 +1,5 @@
 from rest_framework.test import APITestCase
 from apps.common.utils import TestUtil
-from unittest import mock
 
 
 class TestProjects(APITestCase):
@@ -48,7 +47,7 @@ class TestProjects(APITestCase):
         TestUtil.delete_all_projects()
         response = self.client.get(self.project_list_url)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.json().get('results')), 0)
+        self.assertEqual(len(response.json().get("results")), 0)
 
     def test_project_detail_get(self):
         profile = TestUtil.get_profile(user=self.verified_user)
