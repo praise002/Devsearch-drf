@@ -9,7 +9,7 @@ class SkillAdmin(admin.ModelAdmin):
 class ProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'short_intro', 'location')
     search_fields = ('user__username', 'short_intro', 'location') 
-    readonly_fields = ('id', 'updated', 'created') 
+    readonly_fields = ('id', 'updated', 'created', 'user') 
     # raw_id_fields = ('user',)
     list_filter = ('created',) 
     list_per_page = 10

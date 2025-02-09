@@ -28,7 +28,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "short_intro", "bio", "location", "photo",
             "social_github", "social_stackoverflow",
             "social_twitter", "social_linkedin",
-            "skills",
+            "skills", "image_url"
         ] 
         # extra_kwargs = {
         #     'short_intro': {'required': False},
@@ -41,3 +41,4 @@ class ProfileSerializer(serializers.ModelSerializer):
         #     'social_linkedin': {'required': False},
         # }
         
+#TODO: RETURN IMAGE_URL AND NOT PHOTO

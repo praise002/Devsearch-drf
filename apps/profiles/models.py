@@ -19,7 +19,7 @@ class Skill(BaseModel):
 
 
 class Profile(BaseModel):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, editable=False)
     short_intro = models.CharField(
         _("Short Intro"), max_length=200, blank=True
     )  
@@ -55,5 +55,5 @@ class Profile(BaseModel):
         try:
             url = self.photo.url
         except:
-            url = ""  # upload a url to cloud and put it here
+            url = "https://res.cloudinary.com/dq0ow9lxw/image/upload/v1732236186/default-image_foxagq.jpg"
         return url
