@@ -1,24 +1,22 @@
-from django.http import Http404
-from rest_framework.exceptions import ValidationError
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
+from rest_framework.filters import SearchFilter
+from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.generics import ListAPIView
-from rest_framework.filters import SearchFilter
 
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.utils import OpenApiResponse, OpenApiParameter
-
-
-from apps.accounts.validators import validate_uuid
+from apps.common.exceptions import NotFoundError
 from apps.common.pagination import CustomPagination
+from apps.common.responses import CustomResponse
 from apps.common.serializers import (
     ErrorDataResponseSerializer,
     ErrorResponseSerializer,
     SuccessResponseSerializer,
 )
 from apps.profiles.models import Profile
+
 from .models import Message
 from .serializers import MessageSerializer
 
@@ -26,50 +24,6 @@ tags = ["Messages"]
 
 
 # View for listing inbox messages
-class InboxView(APIView):
-    permission_classes = (IsAuthenticated,)
-    serializer_class = MessageSerializer
-    paginator_class = CustomPagination()
-    paginator_class.page_size = 10
-
-    @extend_schema(
-        summary="Retrieve user's inbox messages",
-        description="This endpoint allows authenticated users to view their inbox messages. It returns a list of messages received by the user. Additionally, it provides a count of unread messages to indicate any new notifications in the user's inbox.",
-        tags=tags,
-        responses={
-            200: OpenApiResponse(
-                description="Successfully retrieved inbox messages and unread count",
-                response=SuccessResponseSerializer,
-            ),
-            401: OpenApiResponse(
-                description="Unauthorized access - user must be authenticated",
-                response=ErrorResponseSerializer,
-            ),
-        },
-    )
-    def get(self, request):
-        messages = Message.objects.filter(recipient=request.user.profile)
-        paginated_projects = self.paginator_class.paginate_queryset(messages, request)
-
-        serializer = self.serializer_class(messages, many=True)
-
-        unread_count = messages.filter(is_read=False).count()
-
-        return Response(
-            {
-                "count": messages.count(),
-                "next": paginated_projects.get("next"),
-                "previous": paginated_projects.get("previous"),
-                "results": serializer.data,
-                "unread_count": unread_count,
-                "per_page": paginated_projects.get("per_page"),
-                "current_page": paginated_projects.get("current_page"),
-                "last_page": paginated_projects.get("last_page"),
-            },
-            status=status.HTTP_200_OK,
-        )
-
-
 class InboxGenericView(ListAPIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = MessageSerializer
@@ -99,7 +53,7 @@ class InboxGenericView(ListAPIView):
                 description="Unauthorized access - user must be authenticated",
                 response=ErrorResponseSerializer,
             ),
-        },
+        },  # TODO: MOVE TO SCHEMA LATER
         tags=tags,
     )
     def get(self, request, *args, **kwargs):
@@ -130,11 +84,13 @@ class InboxGenericView(ListAPIView):
             )
 
         serializer = self.get_serializer(queryset, many=True)
-        return Response(
-            {
+        return CustomResponse.success(
+            message="Profiles retrieved successfully.",
+            data={
                 "results": serializer.data,
                 "unread_count": unread_count,
-            }
+            },
+            status_code=status.HTTP_200_OK,
         )
 
 
@@ -160,11 +116,9 @@ class ViewMessage(APIView):
                 response=ErrorResponseSerializer,
                 description="Authentication credentials were not provided or invalid.",
             ),
-        },
+        },  # TODO: MOVE TO SCHEMA LATER
     )
     def get(self, request, id):
-        if not validate_uuid(id):
-            raise Http404("Invalid message ID")
 
         try:
             message = request.user.profile.messages.select_related(
@@ -182,7 +136,11 @@ class ViewMessage(APIView):
             message.is_read = True
             message.save()
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        data = serializer.validated_data
+
+        return CustomResponse.success(
+            data={"is_read": data["is_read"]}, status_code=status.HTTP_200_OK
+        )
 
 
 # View for creating a new message
@@ -206,16 +164,14 @@ class CreateMessage(APIView):
                 description="Recipient profile not found or invalid profile ID.",
                 response=ErrorResponseSerializer,
             ),
-        },
+        },  # TODO: MOVE TO SCHEMA LATER
     )
     def post(self, request, profile_id):
-        if not validate_uuid(profile_id):
-            raise Http404("Invalid profile id")
 
         try:
             recipient = Profile.objects.get(id=profile_id)
         except Profile.DoesNotExist:
-            raise Http404("Profile not found.")
+            raise NotFoundError(err_msg="Profile not found.")
 
         # try:
         #     sender = request.user.profile
@@ -236,7 +192,9 @@ class CreateMessage(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save(sender=sender)
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return CustomResponse.success(
+            message="Message sent successfully.", status_code=status.HTTP_201_CREATED
+        )
 
 
 # View for deleting a message
@@ -260,19 +218,15 @@ class DeleteMessage(APIView):
                 description="Authentication credentials were not provided.",
                 response=ErrorResponseSerializer,
             ),
-        },
+        },  # TODO: MOVE TO SCHEMA LATER
     )
     def delete(self, request, message_id):
-        if not validate_uuid(message_id):
-            raise Http404("Invalid message id")
-
         try:
             message = Message.objects.get(id=message_id, recipient=request.user.profile)
         except Message.DoesNotExist:
-            raise Http404("Message not found.")
+            raise NotFoundError(err_msg="Message not found.")
 
         message.delete()
         return Response(
-            {"message": "Message deleted successfully."},
             status=status.HTTP_204_NO_CONTENT,
         )

@@ -1,27 +1,35 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
+from rest_framework.filters import SearchFilter
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.filters import SearchFilter
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from django_filters.rest_framework import DjangoFilterBackend
-from django.http import Http404
-
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.utils import OpenApiParameter
-
-from apps.accounts.validators import validate_uuid
+from apps.common.errors import ErrorCode
+from apps.common.exceptions import NotFoundError
 from apps.common.pagination import CustomPagination, DefaultPagination
+from apps.common.responses import CustomResponse
 from apps.common.serializers import (
     ErrorDataResponseSerializer,
     ErrorResponseSerializer,
     SuccessResponseSerializer,
 )
 from apps.profiles.filters import ProfileFilter
+from apps.profiles.schema_examples import (
+    PROFILE_RETRIEVE_RESPONSE_EXAMPLE,
+    PROFILE_UPDATE_RESPONSE_EXAMPLE,
+    build_avatar_request_schema,
+)
 
 from .models import Profile, Skill
-from .serializers import ProfileSerializer, SkillSerializer
+from .serializers import (
+    ImageSerializer,
+    ProfileSerializer,
+    ProfileUpdateSerializer,
+    SkillSerializer,
+)
 
 tags = ["Profiles"]
 
@@ -34,32 +42,36 @@ class MyProfileView(APIView):  # view account and edit it
         summary="View a user profile",
         description="This endpoint allows authenticated users to view their profile details. Users can retrieve their account information. Only the account owner can access their profile.",
         tags=tags,
-        responses={
-            200: SuccessResponseSerializer,
-            401: ErrorResponseSerializer,
-        },
+        responses=PROFILE_RETRIEVE_RESPONSE_EXAMPLE,
     )
     def get(self, request):
         profile = request.user.profile
         serializer = self.serializer_class(profile)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return CustomResponse.success(
+            message="Profile retrieved successfully.",
+            data=serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
 
     @extend_schema(
         summary="Update user profile",
         description="This endpoint allows authenticated users to edit their profile details. Users can update their personal information. Only the account owner can modify their profile.",
         tags=tags,
-        responses={
-            200: SuccessResponseSerializer,
-            400: ErrorDataResponseSerializer,
-            401: ErrorResponseSerializer,
-        },
+        responses=PROFILE_UPDATE_RESPONSE_EXAMPLE,
     )
     def patch(self, request):
         profile = request.user.profile
-        serializer = self.serializer_class(profile, data=request.data, partial=True)
+        serializer = ProfileUpdateSerializer(profile, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+        profile = serializer.save()
+        profile_serializer = self.serializer_class(profile)  # re-serialize
+
+        return CustomResponse.success(
+            message="Profile updated successfully.",
+            data=profile_serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
 
 
 class ProfileListView(APIView):
@@ -74,7 +86,7 @@ class ProfileListView(APIView):
         tags=tags,
         responses={
             200: SuccessResponseSerializer,
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
     def get(self, request):
         profiles = (
@@ -111,17 +123,32 @@ class ProfileListGenericView(ListAPIView):
                 name="location",
                 description=("Filter profiles by location."),
             ),
-        ], 
+        ],
         operation_id="list_profiles",
         tags=["Profiles"],
-        responses={200: SuccessResponseSerializer},
-    ) 
+        responses={200: SuccessResponseSerializer},  # TODO: PUT IN SCHEMA LATER
+    )
     def get(self, request, *args, **kwargs):
         """
         Handle GET requests to retrieve profiles with pagination, search, and filtering.
         """
         return super().get(request, *args, **kwargs)
-    
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return CustomResponse.success(
+            message="Profiles retrieved successfully.",
+            data=serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
+
 
 class ProfileDetailView(APIView):
     serializer_class = ProfileSerializer
@@ -132,10 +159,11 @@ class ProfileDetailView(APIView):
         tags=tags,
         responses={
             200: SuccessResponseSerializer,
-            404: ErrorResponseSerializer,
-        },
+            400: ErrorDataResponseSerializer,
+            422: ErrorDataResponseSerializer,
+        },  # TODO: PUT IN SCHEMA LATER
     )
-    def get(self, request, username):
+    def get(self, username):
         try:
             profile = (
                 Profile.objects.select_related("user")
@@ -143,12 +171,43 @@ class ProfileDetailView(APIView):
                 .get(user__username=username)
             )
             serializer = self.serializer_class(profile)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Profile.DoesNotExist:
-            # raise Http404("Profile not found.")
-            return Response(
-                {"error": "Profile not found."}, status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.success(
+                message="Profile detail retrieved successfully.",
+                data=serializer.data,
+                status_code=status.HTTP_200_OK,
             )
+
+        except Profile.DoesNotExist:
+            return CustomResponse.error(
+                message="Profile not found.",
+                err_code=ErrorCode.BAD_REQUEST,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class ImageUpdateView(APIView):
+    serializer_class = ImageSerializer
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Update user image",
+        description="This endpoint allows authenticated users to upload or update their profile image.",
+        tags=tags,
+        request=build_avatar_request_schema(),
+        responses=PROFILE_UPDATE_RESPONSE_EXAMPLE,
+    )
+    def patch(self, request):
+        profile = request.user.profile
+        serializer = self.serializer_class(profile, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        profile = serializer.save()
+        profile_serializer = ProfileSerializer(profile)  # re-serialize
+
+        return CustomResponse.success(
+            message="Profile updated successfully.",
+            data=profile_serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
 
 
 class SkillCreateView(APIView):
@@ -163,7 +222,7 @@ class SkillCreateView(APIView):
             201: SuccessResponseSerializer,
             400: ErrorDataResponseSerializer,
             401: ErrorResponseSerializer,
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
@@ -177,14 +236,11 @@ class SkillDetailView(APIView):  # detail, edit, delete
     serializer_class = SkillSerializer
 
     def get_object(self, id):
-        if not validate_uuid(id):
-            raise Http404("Invalid skill id")
-
         try:
             skill = Skill.objects.get(id=id, user=self.request.user.profile)
             return skill
         except Skill.DoesNotExist:
-            raise Http404("Skill not found.")
+            raise NotFoundError(err_msg="Skill not found.")
 
     @extend_schema(
         summary="View a specific skill",
@@ -194,12 +250,16 @@ class SkillDetailView(APIView):  # detail, edit, delete
             200: SuccessResponseSerializer,
             401: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
-    def get(self, request, id):
+    def get(self, id):
         skill = self.get_object(id)
         serializer = self.serializer_class(skill)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return CustomResponse.success(
+            message="Skills retrieved successfully.",
+            data=serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
 
     @extend_schema(
         summary="Update a specific skill",
@@ -209,14 +269,18 @@ class SkillDetailView(APIView):  # detail, edit, delete
             200: SuccessResponseSerializer,
             401: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
-    def put(self, request, id):  # TODO: PUT OR PATCH
+    def patch(self, request, id):
         skill = self.get_object(id)
         serializer = self.serializer_class(skill, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return CustomResponse.success(
+            message="Skill updated successfully.",
+            data=serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
 
     @extend_schema(
         summary="Delete a specific skill",
@@ -226,12 +290,12 @@ class SkillDetailView(APIView):  # detail, edit, delete
             204: SuccessResponseSerializer,
             401: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
-    def delete(self, request, id):
+    def delete(self, id):
         skill = self.get_object(id)
         skill.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-# UserAccountView or MyProfileView
+# REWORK ON ALL SCHEMAS FOR THE REAL RESULT

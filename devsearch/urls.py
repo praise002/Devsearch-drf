@@ -19,7 +19,7 @@ from apps.common.serializers import SuccessResponseSerializer
 
 class HealthCheckView(APIView):
     serializer_class = None
-    
+
     @extend_schema(
         "/",
         summary="API Health Check",
@@ -29,7 +29,6 @@ class HealthCheckView(APIView):
     )
     def get(self, request):
         return Response({"message": "pong"}, status=status.HTTP_200_OK)
-    
 
 
 def handler404(request, exception=None):
@@ -70,7 +69,6 @@ urlpatterns = [
         SpectacularRedocView.as_view(url_name="schema"),
         name="redoc",
     ),
-    
     path("api/v1/healthcheck/", HealthCheckView.as_view()),
 ]
 

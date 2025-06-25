@@ -1,35 +1,54 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.permissions import IsAuthenticated
+import logging
 
+from django.conf import settings
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import (
+    TokenBlacklistView,
+    TokenObtainPairView,
+    TokenRefreshView,
+)
 
 from apps.accounts.emails import SendEmail
+from apps.accounts.schema_examples import (
+    LOGIN_RESPONSE_EXAMPLE,
+    LOGOUT_ALL_RESPONSE_EXAMPLE,
+    LOGOUT_RESPONSE_EXAMPLE,
+    PASSWORD_CHANGE_RESPONSE_EXAMPLE,
+    PASSWORD_RESET_DONE_RESPONSE_EXAMPLE,
+    PASSWORD_RESET_REQUEST_RESPONSE_EXAMPLE,
+    REFRESH_TOKEN_RESPONSE_EXAMPLE,
+    REGISTER_RESPONSE_EXAMPLE,
+    RESEND_VERIFICATION_EMAIL_RESPONSE_EXAMPLE,
+    VERIFY_EMAIL_RESPONSE_EXAMPLE,
+    VERIFY_OTP_RESPONSE_EXAMPLE,
+)
+from apps.accounts.utils import invalidate_previous_otps
+from apps.common.errors import ErrorCode
+from apps.common.responses import CustomResponse
+
+from .models import Otp, User
+from .permissions import IsUnauthenticated
 from .serializers import (
+    CustomTokenObtainPairSerializer,
     PasswordChangeSerializer,
     RegisterSerializer,
     RequestPasswordResetOtpSerializer,
     SendOtpSerializer,
     SetNewPasswordSerializer,
     VerifyOtpSerializer,
-    CustomTokenObtainPairSerializer,
-    RegisterResponseSerializer,
-    LoginResponseSerializer,
 )
 
-from apps.common.serializers import (
-    ErrorDataResponseSerializer,
-    ErrorResponseSerializer,
-    SuccessResponseSerializer,
-)
-from .models import User, Otp
-from .permissions import IsUnauthenticated
-
+logger = logging.getLogger(__name__)
 
 tags = ["Auth"]
+
 
 class RegisterView(APIView):
     serializer_class = RegisterSerializer
@@ -39,10 +58,7 @@ class RegisterView(APIView):
         summary="Register a new user",
         description="This endpoint registers new users into our application",
         tags=tags,
-        responses={
-            201: RegisterResponseSerializer,
-            400: ErrorDataResponseSerializer,
-        },
+        responses=REGISTER_RESPONSE_EXAMPLE,
         auth=[],
     )
     def post(self, request):
@@ -54,12 +70,10 @@ class RegisterView(APIView):
         # Send OTP for email verification
         SendEmail.send_email(request, user)
 
-        return Response(
-            {
-                "message": "OTP sent for email verification.",
-                "email": data["email"],
-            },
-            status=status.HTTP_201_CREATED,
+        return CustomResponse.success(
+            message="OTP sent for email verification.",
+            data={"email": data["email"]},
+            status_code=status.HTTP_201_CREATED,
         )
 
 
@@ -69,51 +83,68 @@ class LoginView(TokenObtainPairView):
     @extend_schema(
         summary="Login a user",
         description="This endpoint generates new access and refresh tokens for authentication",
-        responses={
-            200: LoginResponseSerializer,
-            404: ErrorResponseSerializer,
-            403: ErrorResponseSerializer,
-        },
+        responses=LOGIN_RESPONSE_EXAMPLE,
         tags=tags,
     )
     def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+
         try:
+            serializer.is_valid(raise_exception=True)
+            
             user = User.objects.get(email=request.data.get("email"))
 
             # Check if the user's email is verified
             if not user.is_email_verified:
                 # If email is not verified, prompt them to request an OTP
-                return Response(
-                    {
-                        "message": "Email not verified. Please verify your email before logging in.",
-                        "next_action": "send_email",  # Inform the client to call SendVerificationEmailView
-                        "email": user.email,  # Send back the email to pass it to SendVerificationEmailView
-                    },
-                    status=status.HTTP_403_FORBIDDEN,
+                return CustomResponse.error(
+                    message="Email not verified. Please verify your email before logging in.",
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    err_code=ErrorCode.FORBIDDEN,
                 )
 
-        except User.DoesNotExist:
-            return Response(
-                {"error": "User does not exist."}, status=status.HTTP_404_NOT_FOUND
+        except TokenError as e:
+            raise InvalidToken(e.args[0])
+
+        
+        if settings.DEBUG:
+            response = CustomResponse.success(
+                message="Login successful.",
+                data=serializer.validated_data,
+                status_code=status.HTTP_200_OK,
+            )
+        else:
+            # Extract the refresh token from the response
+            refresh = serializer.validated_data["refresh"]
+            access = serializer.validated_data["access"]
+
+            # Set the refresh token as an HTTP-only cookie
+            response = CustomResponse.success(
+                message="Login successful.",
+                data={
+                    "access": access,
+                },
+                status_code=status.HTTP_200_OK,
+            )
+            response.set_cookie(
+                key="refresh",
+                value=refresh,
+                httponly=True,  # Prevent JavaScript access
+                secure=True,  # Only send over HTTPS
+                samesite="None",  # Allow cross-origin requests if frontend and backend are on different domains
             )
 
-        # If email is verified, proceed with the normal token generation process
-        return super().post(request, *args, **kwargs)
+        return response
 
 
 class ResendVerificationEmailView(APIView):
     serializer_class = SendOtpSerializer
     permission_classes = (IsUnauthenticated,)
-    throttle_scope = 'otp'
 
     @extend_schema(
         summary="Send OTP to a user's email",
         description="This endpoint sends OTP to a user's email for verification",
-        responses={
-            200: SuccessResponseSerializer,
-            400: ErrorDataResponseSerializer,
-            404: ErrorResponseSerializer,
-        },
+        responses=RESEND_VERIFICATION_EMAIL_RESPONSE_EXAMPLE,
         tags=tags,
         auth=[],
     )
@@ -125,19 +156,27 @@ class ResendVerificationEmailView(APIView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response(
-                {"error": "No account is associated with this email."},
-                status=status.HTTP_404_NOT_FOUND,
+            return CustomResponse.error(
+                message="No account is associated with this email.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                err_code=ErrorCode.BAD_REQUEST,
             )
 
-        # Invalidate/clear any previous OTPs TODO: MIGHT MOVE TO ANOTHER FN LATER
-        Otp.objects.filter(user=user).delete()
+        if user.is_email_verified:
+            return CustomResponse.success(
+                message="Your email is already verified. No OTP sent.",
+                status_code=status.HTTP_200_OK,
+            )
+
+        # Invalidate/clear any previous OTPs
+        invalidate_previous_otps(user)
 
         # Send OTP to user's email
         SendEmail.send_email(request, user)
 
-        return Response(
-            {"message": "OTP sent successfully."}, status=status.HTTP_200_OK
+        return CustomResponse.success(
+            message="OTP sent successfully.",
+            status_code=status.HTTP_200_OK,
         )
 
 
@@ -148,12 +187,7 @@ class VerifyEmailView(APIView):
     @extend_schema(
         summary="Verify a user's email",
         description="This endpoint verifies a user's email",
-        responses={
-            200: SuccessResponseSerializer,
-            400: ErrorDataResponseSerializer,
-            404: ErrorResponseSerializer,
-            410: ErrorResponseSerializer,
-        },
+        responses=VERIFY_EMAIL_RESPONSE_EXAMPLE,
         tags=tags,
         auth=[],
     )
@@ -167,75 +201,111 @@ class VerifyEmailView(APIView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response(
-                {"error": "No account is associated with this email."},
-                status=status.HTTP_404_NOT_FOUND,
+            return CustomResponse.error(
+                message="No account is associated with this email.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                err_code=ErrorCode.BAD_REQUEST,
             )
 
         # Check if the OTP is valid for this user
         try:
             otp_record = Otp.objects.get(user=user, otp=otp)
         except Otp.DoesNotExist:
-            return Response(
-                {"error": "Invalid OTP provided."}, status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message="Invalid OTP provided.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                err_code=ErrorCode.BAD_REQUEST,
             )
 
         # Check if OTP is expired
         if not otp_record.is_valid:
-            return Response(
-                {
-                    "error": "OTP has expired.",
-                    "next_action": "request_new_otp",
-                    "request_url": "/api/v1/auth/otp",
-                },
-                status=status.HTTP_410_GONE,
-            ) # NOTE: or create a 498 status code
+            return CustomResponse.error(
+                message="OTP has expired, please request a new one.",
+                status_code=498,
+                err_code=ErrorCode.EXPIRED,
+            )
 
         # Check if user is already verified
         if user.is_email_verified:
             # Clear the OTP
-            Otp.objects.filter(user=user).delete()
-            return Response(
-                {"message": "Email address already verified!"},
-                status=status.HTTP_200_OK
+            invalidate_previous_otps(user)
+            return CustomResponse.success(
+                message="Email address already verified. No OTP sent.",
+                status_code=status.HTTP_200_OK,
             )
 
         user.is_email_verified = True
         user.save()
 
         # Clear OTP after verification
-        Otp.objects.filter(user=user).delete()
+        invalidate_previous_otps(user)
 
         SendEmail.welcome(request, user)
 
-        return Response(
-            {"message": "Email verified successfully."}, status=status.HTTP_200_OK
+        return CustomResponse.success(
+            message="Email verified successfully.",
+            status_code=status.HTTP_200_OK,
         )
 
 
-class LogoutView(APIView):
-    permission_classes = (IsAuthenticated,)
-    serializer_class = None
+class LogoutView(TokenBlacklistView):
 
     @extend_schema(
         summary="Logout a user",
         description="This endpoint logs a user out from our application",
-        responses={
-            200: SuccessResponseSerializer,
-            401: ErrorResponseSerializer,
-        },
+        responses=LOGOUT_RESPONSE_EXAMPLE,
         tags=tags,
     )
     def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+
         try:
-            refresh_token = request.data.get("refresh")
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-            return Response(
-                {"message": "Logout successful."}, status=status.HTTP_200_OK
+            serializer.is_valid(raise_exception=True)
+        except TokenError as e:
+            raise InvalidToken(e.args[0])
+
+        if settings.DEBUG:
+            response = CustomResponse.success(
+                message="Logged out successfully.", status_code=status.HTTP_200_OK
+            )
+        else:
+            # Clear the HTTP-only cookie containing the refresh token
+            response.delete_cookie("refresh")
+        return response
+
+
+class LogoutAllView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = None
+
+    @extend_schema(
+        summary="Logout from all devices",
+        description="Blacklists all refresh tokens for the user",
+        tags=tags,
+        responses=LOGOUT_ALL_RESPONSE_EXAMPLE,
+    )
+    def post(self, request):
+        try:
+            # Get all valid tokens for the user
+            tokens = OutstandingToken.objects.filter(
+                user=request.user, expires_at__gt=timezone.now(), blacklistedtoken=None
+            )
+
+            # Blacklist all tokens
+            for token in tokens:
+                RefreshToken(token.token).blacklist()
+
+            return CustomResponse.success(
+                message="Successfully logged out from all devices.",
+                status_code=status.HTTP_200_OK,
             )
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            logger.error(f"Logout error: {str(e)}")
+            return CustomResponse.error(
+                message="Error during logout",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                err_code=ErrorCode.SERVER_ERROR,
+            )
 
 
 class PasswordChangeView(APIView):
@@ -245,11 +315,7 @@ class PasswordChangeView(APIView):
     @extend_schema(
         summary="Change user password",
         description="This endpoint allows authenticated users to update their account password. The user must provide their current password for verification along with the new password they wish to set. If successful, the password will be updated, and a response will confirm the change.",
-        responses={
-            200: SuccessResponseSerializer,
-            400: ErrorDataResponseSerializer,
-            401: ErrorResponseSerializer,
-        },
+        responses=PASSWORD_CHANGE_RESPONSE_EXAMPLE,
         tags=tags,
     )
     def post(self, request):
@@ -258,24 +324,19 @@ class PasswordChangeView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(
-            {"message": "Password changed successfully."}, status=status.HTTP_200_OK
+        return CustomResponse.success(
+            message="Password changed successfully.", status_code=status.HTTP_200_OK
         )
 
 
 class PasswordResetRequestView(APIView):
     permission_classes = (IsUnauthenticated,)
     serializer_class = RequestPasswordResetOtpSerializer
-    throttle_scope = 'otp'
 
     @extend_schema(
         summary="Send Password Reset Otp",
         description="This endpoint sends new password reset otp to the user's email",
-        responses={
-            200: SuccessResponseSerializer,
-            400: ErrorDataResponseSerializer,
-            404: ErrorResponseSerializer,
-        },
+        responses=PASSWORD_RESET_REQUEST_RESPONSE_EXAMPLE,
         tags=tags,
         auth=[],
     )
@@ -287,34 +348,31 @@ class PasswordResetRequestView(APIView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response(
-                {"error": "User with this email does not exist."},
-                status=status.HTTP_404_NOT_FOUND,
+            return CustomResponse.error(
+                message="User with this email does not exist.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                err_code=ErrorCode.BAD_REQUEST,
             )
 
         # Clear otps if another otp is requested
-        Otp.objects.filter(user=user).delete()
+        invalidate_previous_otps(user)
 
         # Send OTP to user's email
         SendEmail.send_password_reset_email(request, user)
 
-        return Response(
-            {"message": "OTP sent successfully."}, status=status.HTTP_200_OK
+        return CustomResponse.success(
+            message="OTP sent successfully.", status_code=status.HTTP_200_OK
         )
+
 
 class VerifyOtpView(APIView):
     permission_classes = (IsUnauthenticated,)
     serializer_class = VerifyOtpSerializer
-    
+
     @extend_schema(
         summary="Verify password reset otp",
         description="This endpoint verifies the password reset OTP.",
-        responses={
-            200: SuccessResponseSerializer,
-            400: ErrorDataResponseSerializer, 
-            404: ErrorResponseSerializer,
-            410: ErrorResponseSerializer,
-        },
+        responses=VERIFY_OTP_RESPONSE_EXAMPLE,
         tags=tags,
         auth=[],
     )
@@ -328,34 +386,36 @@ class VerifyOtpView(APIView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response(
-                {"error": "No account is associated with this email."},
-                status=status.HTTP_404_NOT_FOUND,
+            return CustomResponse.error(
+                message="No account is associated with this email.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                err_code=ErrorCode.BAD_REQUEST,
             )
 
         # Check if the OTP is valid for this user
         try:
             otp_record = Otp.objects.get(user=user, otp=otp)
         except Otp.DoesNotExist:
-            return Response(
-                {"error": "The OTP could not be found. Please enter a valid OTP or request a new one."}, status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message="The OTP could not be found. Please enter a valid OTP or request a new one.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                err_code=ErrorCode.BAD_REQUEST,
             )
 
         # Check if OTP is expired
         if not otp_record.is_valid:
-            return Response(
-                {
-                    "error": "OTP has expired. Please request a new one.",
-                },
-                status=status.HTTP_410_GONE,
+            return CustomResponse.error(
+                message="OTP has expired, please request a new one.",
+                status_code=498,
+                err_code=ErrorCode.EXPIRED,
             )
-            
+
         # Clear OTP after verification
-        Otp.objects.filter(user=user).delete()
-        
-        return Response(
-            {"message": "OTP verified, proceed to set new password."},
-            status=status.HTTP_200_OK,
+        invalidate_previous_otps(user)
+
+        return CustomResponse.success(
+            message="OTP verified, proceed to set a new password.",
+            status_code=status.HTTP_200_OK,
         )
 
 
@@ -366,19 +426,13 @@ class PasswordResetDoneView(APIView):
     @extend_schema(
         summary="Set New Password",
         description="This endpoint sets a new password if the OTP is valid.",
-        responses={
-            200: SuccessResponseSerializer,
-            400: ErrorDataResponseSerializer,
-            404: ErrorResponseSerializer,
-        },
+        responses=PASSWORD_RESET_DONE_RESPONSE_EXAMPLE,
         tags=tags,
         auth=[],
     )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        # This call will set the new password and save the user instance
-        # serializer.save()
 
         email = serializer.validated_data["email"]
         new_password = serializer.validated_data["new_password"]
@@ -386,9 +440,10 @@ class PasswordResetDoneView(APIView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response(
-                {"error": "No account is associated with this email."},
-                status=status.HTTP_404_NOT_FOUND,
+            return CustomResponse.error(
+                message="No account is associated with this email.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                err_code=ErrorCode.BAD_REQUEST,
             )
 
         # Update the user's password
@@ -397,9 +452,9 @@ class PasswordResetDoneView(APIView):
 
         SendEmail.password_reset_success(request, user)
 
-        return Response(
-            {"message": "Your password has been reset, proceed to login."},
-            status=status.HTTP_200_OK,
+        return CustomResponse.success(
+            message="Your password has been reset, proceed to login.",
+            status_code=status.HTTP_200_OK,
         )
 
 
@@ -408,16 +463,43 @@ class RefreshTokensView(TokenRefreshView):
         summary="Refresh user access token",
         description="This endpoint allows users to refresh their access token using a valid refresh token. It returns a new access token, which can be used for further authenticated requests.",
         tags=tags,
-        responses={
-            200: SuccessResponseSerializer,  # response schema for successful token refresh
-            401: ErrorResponseSerializer,
-        },
+        responses=REFRESH_TOKEN_RESPONSE_EXAMPLE,
     )
     def post(self, request, *args, **kwargs):
         """
         Handle POST request to refresh the JWT token
         """
-        response = super().post(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError as e:
+            raise InvalidToken(e.args[0])
+
+        if settings.DEBUG:
+            response = CustomResponse.success(
+                message="Token refreshed successfully.",
+                data=serializer.validated_data,
+                status_code=status.HTTP_200_OK,
+            )
+        else:
+            # Extract the new refresh token from the response
+            refresh = serializer.validated_data["refresh"]
+            access = serializer.validated_data("access")
+
+            # Set the new refresh token as an HTTP-only cookie
+            response = CustomResponse.success(
+                message="Token refreshed successfully.",
+                data={"access": access},
+                status_code=status.HTTP_200_OK,
+            )
+
+            response.set_cookie(
+                key="refresh",
+                value=refresh,
+                httponly=True,  # Prevent JavaScript access
+                secure=True,  # Only send over HTTPS
+                samesite="None",  # Allow cross-origin requests if frontend and backend are on different domains
+            )
 
         return response
-

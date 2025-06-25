@@ -1,12 +1,12 @@
+from autoslug import AutoSlugField
 from django.db import models
-from django.utils.translation import gettext_lazy as _
+
 from apps.common.models import BaseModel
 from apps.profiles.models import Profile
-from autoslug import AutoSlugField
 
 
 class Tag(BaseModel):
-    name = models.CharField(_("Name"), max_length=50, blank=True)
+    name = models.CharField(max_length=50, blank=True)
 
     class Meta:
         ordering = ["-created"]
@@ -19,20 +19,18 @@ class Tag(BaseModel):
 
 
 class Project(BaseModel):
-    title = models.CharField(_("Title"), max_length=255)
+    title = models.CharField(max_length=255)
     slug = AutoSlugField(populate_from="title", always_update=True, unique=True)
     owner = models.ForeignKey(
         Profile, related_name="projects", on_delete=models.CASCADE
     )
-    featured_image = models.ImageField(
-        _("Featured Image"), upload_to="featured_image/", blank=True
-    )
-    description = models.TextField(_("Description"))
-    source_link = models.CharField(_("Source Code Link"), max_length=200, blank=True)
-    demo_link = models.CharField(_("Demo Link"), max_length=200, blank=True)
+    featured_image = models.ImageField(upload_to="featured_image/", blank=True, null=True)
+    description = models.TextField()
+    source_link = models.CharField(max_length=200, blank=True)
+    demo_link = models.CharField(max_length=200, blank=True)
     tags = models.ManyToManyField(Tag)
-    vote_total = models.IntegerField(_("Vote Total"), default=0)
-    vote_ratio = models.IntegerField(_("Vote Ratio"), default=0)
+    vote_total = models.IntegerField(default=0)
+    vote_ratio = models.IntegerField(default=0)
     updated = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -59,7 +57,7 @@ class Project(BaseModel):
         return queryset
 
     @property
-    def review_percentage(self) -> float:
+    def review_percentage(self) -> int:
         """
         Calculate the positive feedback percentage based on votes.
         """
@@ -77,8 +75,8 @@ class Project(BaseModel):
 
 class Review(BaseModel):
     VOTE_TYPE = (
-        ("up", _("Up Vote")),
-        ("down", _("Down Vote")),
+        ("up", "Up Vote"),
+        ("down", "Down Vote"),
     )
 
     project = models.ForeignKey(
@@ -88,9 +86,7 @@ class Review(BaseModel):
         Profile, related_name="votes", on_delete=models.CASCADE
     )
     value = models.CharField(max_length=4, choices=VOTE_TYPE)
-    content = models.TextField(
-        _("Content"),
-    )
+    content = models.TextField()
 
     class Meta:
         ordering = ["-created"]

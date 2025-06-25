@@ -1,12 +1,13 @@
-from datetime import timedelta
-from django.utils import timezone
-from django.conf import settings
-from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
-from django.utils.translation import gettext_lazy as _
-from autoslug import AutoSlugField
-from .managers import CustomUserManager
 import uuid
+from datetime import timedelta
+
+from autoslug import AutoSlugField
+from django.conf import settings
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.db import models
+from django.utils import timezone
+
+from .managers import CustomUserManager
 
 
 def slugify_two_fields(self):
@@ -15,12 +16,12 @@ def slugify_two_fields(self):
 
 class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True)
-    first_name = models.CharField(_("First name"), max_length=50)
-    last_name = models.CharField(_("Last name"), max_length=50)
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
     username = AutoSlugField(
-        _("Username"), populate_from=slugify_two_fields, unique=True, always_update=True
+        populate_from=slugify_two_fields, unique=True, always_update=True
     )
-    email = models.EmailField(_("Email address"), unique=True)
+    email = models.EmailField(unique=True)
 
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
@@ -64,24 +65,3 @@ class Otp(models.Model):
             minutes=settings.EMAIL_OTP_EXPIRE_MINUTES
         )
         return timezone.now() < expiration_time
-
-    @classmethod
-    def generate_otp(cls, user):
-        pass
-
-
-# @classmethod
-#     def generate_otp(cls, user):
-#         """Generate and save a new OTP for the user."""
-#         otp_code = random.randint(100000, 999999)
-#         otp_instance = cls.objects.create(user=user, otp=otp_code)
-#         return otp_instance
-
-# Clear previous OTPs
-# Otp.objects.filter(user=user).delete()
-
-# # Generate OTP directly from Otp model and send email
-# otp_instance = Otp.generate_otp(user)
-# SendEmail.send_email(request, user, otp_instance.otp)
-
-# ask the diff btw it and static method

@@ -5,7 +5,7 @@ urlpatterns = [
     path('', views.ProjectListGenericView.as_view(), name='project_list'),
     path('add/', views.ProjectCreateView.as_view()),
     path('<slug:slug>/', views.ProjectDetailView.as_view()),
-    path('<slug:slug>/edit-delete/', views.ProjectEditDeleteView.as_view()),
+    path('<slug:slug>/', views.ProjectEditDeleteView.as_view()),
     path('<slug:slug>/related/', views.RelatedProjectsView.as_view()),
     
     # Tags

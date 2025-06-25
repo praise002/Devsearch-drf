@@ -1,28 +1,32 @@
-from django.http import Http404
+from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
+from rest_framework.filters import SearchFilter
+from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.generics import ListAPIView
-from rest_framework.filters import SearchFilter
 
-from django.shortcuts import get_object_or_404
-from django_filters.rest_framework import DjangoFilterBackend
-
-from drf_spectacular.utils import extend_schema
-
-from apps.accounts.validators import validate_uuid
+from apps.common.errors import ErrorCode
+from apps.common.exceptions import NotFoundError
 from apps.common.pagination import CustomPagination, DefaultPagination
+from apps.common.responses import CustomResponse
 from apps.common.serializers import (
     ErrorDataResponseSerializer,
     ErrorResponseSerializer,
     SuccessResponseSerializer,
 )
+from apps.profiles.schema_examples import build_avatar_request_schema
 from apps.projects.filters import ProjectFilter
-from drf_spectacular.utils import OpenApiParameter
 
-from .models import Project, Tag, Review
-from .serializers import ProjectSerializer, TagSerializer, ReviewSerializer
+from .models import Project, Review, Tag
+from .serializers import (
+    FeaturedImageSerializer,
+    ProjectCreateSerializer,
+    ProjectSerializer,
+    ReviewSerializer,
+    TagSerializer,
+)
 
 tags = ["Projects"]
 
@@ -39,7 +43,7 @@ class ProjectListView(APIView):
         tags=tags,
         responses={
             200: SuccessResponseSerializer,
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
     def get(self, request):
         projects = Project.objects.select_related("owner").prefetch_related("tags")
@@ -50,7 +54,9 @@ class ProjectListView(APIView):
 
 
 class ProjectListGenericView(ListAPIView):
-    queryset = Project.objects.select_related("owner__user").prefetch_related("tags", "reviews")
+    queryset = Project.objects.select_related("owner__user").prefetch_related(
+        "tags", "reviews"
+    )
     serializer_class = ProjectSerializer
     filter_backends = (DjangoFilterBackend, SearchFilter)
     filterset_class = ProjectFilter
@@ -74,13 +80,28 @@ class ProjectListGenericView(ListAPIView):
         tags=tags,
         responses={
             200: SuccessResponseSerializer,
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
     def get(self, request, *args, **kwargs):
         """
         Handle GET requests to retrieve projects with pagination, search, and filtering.
         """
         return super().get(request, *args, **kwargs)
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return CustomResponse.success(
+            message="Projects retrieved successfully.",
+            data=serializer.data,
+            status_code=status.HTTP_200_OK
+        )
 
 
 class ProjectDetailView(APIView):
@@ -93,9 +114,9 @@ class ProjectDetailView(APIView):
         responses={
             200: SuccessResponseSerializer,
             404: ErrorResponseSerializer,
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
-    def get(self, request, slug):
+    def get(self, slug):
         try:
             project = (
                 Project.objects.select_related("owner__user")
@@ -103,11 +124,12 @@ class ProjectDetailView(APIView):
                 .get(slug=slug)
             )
             serializer = ProjectSerializer(project)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Project.DoesNotExist:
-            return Response(
-                {"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.success(
+                message="Project detail retrieved successfully.",
+                data=serializer.data, status_code=status.HTTP_200_OK
             )
+        except Project.DoesNotExist:
+            raise NotFoundError(err_msg="Project not found.")
 
 
 class RelatedProjectsView(APIView):
@@ -124,9 +146,9 @@ class RelatedProjectsView(APIView):
         responses={
             200: SuccessResponseSerializer,
             404: ErrorResponseSerializer,
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
-    def get(self, request, slug):
+    def get(self, slug):
         try:
             project = (
                 Project.objects.select_related("owner__user")
@@ -143,11 +165,14 @@ class RelatedProjectsView(APIView):
             )
 
             serializer = ProjectSerializer(related_projects, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Project.DoesNotExist:
-            return Response(
-                {"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND
+
+            return CustomResponse.success(
+                message="Related projects retrieved successfully.",
+                data=serializer.data,
+                status_code=status.HTTP_200_OK,
             )
+        except Project.DoesNotExist:
+            raise NotFoundError(err_msg="Project not found.")
 
 
 class ProjectCreateView(APIView):
@@ -162,13 +187,45 @@ class ProjectCreateView(APIView):
             200: SuccessResponseSerializer,
             400: ErrorResponseSerializer,
             401: ErrorResponseSerializer,
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
+        serializer = ProjectCreateSerializer(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
-        serializer.save(owner=request.user.profile)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        project = serializer.save()
+        project_serializer = self.serializer_class(project)  # re-serialize
+        return CustomResponse.success(
+            message="Project created successfully.",
+            data=project_serializer.data,
+            status_code=status.HTTP_201_CREATED,
+        )
+
+class FeaturedImageUpdateView(APIView):
+    serializer_class = FeaturedImageSerializer
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Update project featured image",
+        description="This endpoint allows authenticated users to upload or update their project featured image.",
+        tags=tags,
+        request=build_avatar_request_schema(prop1="featured_image", desc="Featured Image file"),
+        responses={},
+    )
+    def patch(self, request):
+        profile = request.user.profile
+        serializer = self.serializer_class(profile, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        project = serializer.save()
+        project_serializer = ProjectSerializer(project)  # re-serialize
+
+        return CustomResponse.success(
+            message="Project updated successfully.",
+            data=project_serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
 
 
 class ProjectEditDeleteView(APIView):
@@ -184,16 +241,23 @@ class ProjectEditDeleteView(APIView):
             400: ErrorDataResponseSerializer,
             401: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
     def patch(self, request, slug):
         profile = request.user.profile
 
-        project = get_object_or_404(profile.projects, slug=slug)
+        try:
+            project = Project.objects.get(owner=profile, slug=slug)
+        except Project.DoesNotExist:
+            raise NotFoundError(err_msg="Project not found.")
         serializer = self.serializer_class(project, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return CustomResponse.success(
+            message="Project updated successfully.",
+            data=serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
 
     @extend_schema(
         summary="Delete a specific project",
@@ -203,12 +267,15 @@ class ProjectEditDeleteView(APIView):
             204: ErrorResponseSerializer,  # Successfully deleted project (no content in response body)
             401: ErrorResponseSerializer,
             404: ErrorResponseSerializer,
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
     def delete(self, request, slug):
         profile = request.user.profile
 
-        project = get_object_or_404(profile.projects, slug=slug)
+        try:
+            project = Project.objects.get(owner=profile, slug=slug)
+        except Project.DoesNotExist:
+            raise NotFoundError(err_msg="Project not found.")
         project.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -225,17 +292,22 @@ class TagCreateView(APIView):
             201: SuccessResponseSerializer,  # Successfully created tag
             400: ErrorResponseSerializer,  # Validation error or bad request
             401: ErrorResponseSerializer,
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
     def post(self, request, slug):
         profile = request.user.profile
-        project = get_object_or_404(profile.projects, slug=slug)
+        try:
+            project = Project.objects.get(owner=profile, slug=slug)
+        except Project.DoesNotExist:
+            raise NotFoundError(err_msg="Project not found.")
 
         # Get tag name from request and handle missing or empty value
         tag_name = request.data.get("name")
         if not tag_name:
-            return Response(
-                {"error": "Tag name is required."}, status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                err_msg="Tag name is required.",
+                err_code=ErrorCode.BAD_REQUEST,
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         tag_name = tag_name.lower()
@@ -246,16 +318,21 @@ class TagCreateView(APIView):
         project.tags.add(tag)
 
         serializer = self.serializer_class(tag)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return CustomResponse.success(
+            message="Tag created successfully.",
+            data=serializer.data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class TagRemoveView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def get_object(self, id):
-        if not validate_uuid(id):
-            raise Http404("Invalid tag id")
-        return get_object_or_404(Tag, pk=id)
+        try:
+            return Tag.objects.get(pk=id)
+        except Tag.DoesNotExist:
+            raise NotFoundError(err_msg="Tag not found.")
 
     @extend_schema(
         summary="Remove a tag from a project",
@@ -265,30 +342,31 @@ class TagRemoveView(APIView):
             204: SuccessResponseSerializer,  # Successfully removed tag
             404: ErrorResponseSerializer,  # Project or tag not found
             401: ErrorResponseSerializer,
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
     def delete(self, request, project_slug, tag_id):
         """Remove a tag from a specific project."""
         profile = request.user.profile
 
         # Get the project based on the slug
-        project = get_object_or_404(profile.projects, slug=project_slug)
+        try:
+            project = Project.objects.get(owner=profile, slug=project_slug)
+        except Project.DoesNotExist:
+            raise NotFoundError(err_msg="Project not found.")
 
         # Get the tag based on the tag ID
         tag = self.get_object(tag_id)
 
         # Check if the tag is associated with the project
         if tag not in project.tags.all():
-            return Response(
-                {"error": "Tag not associated with this project."},
-                status=status.HTTP_404_NOT_FOUND,
+            raise NotFoundError(
+                err_msg="Tag not associated with this project.",
             )
 
         # Remove the association of this tag from the project
         project.tags.remove(tag)
 
         return Response(
-            {"message": "Tag removed from the project successfully."},
             status=status.HTTP_204_NO_CONTENT,
         )
 
@@ -307,25 +385,30 @@ class ReviewCreateView(APIView):
             403: ErrorResponseSerializer,  # User cannot review their own project
             404: ErrorResponseSerializer,  # Project not found
             401: ErrorResponseSerializer,
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
     def post(self, request, slug):
         # Retrieve the project
-        project = get_object_or_404(Project, slug=slug)
+        try:
+            project = Project.objects.get(slug=slug)
+        except Project.DoesNotExist:
+            raise NotFoundError(err_msg="Project not found.")
 
         # Check if the user is trying to review their own project
         if project.owner == request.user.profile:
-            return Response(
-                {"error": "You cannot review your own project."},
-                status=status.HTTP_403_FORBIDDEN,
+            return CustomResponse.error(
+                message="You cannot review your own project.",
+                err_code=ErrorCode.FORBIDDEN,
+                status_code=status.HTTP_403_FORBIDDEN,
             )
 
         # Check if the user has already reviewed the project
         existing_review = project.reviews.filter(reviewer=request.user.profile).first()
         if existing_review:
-            return Response(
-                {"error": "You have already reviewed this project."},
-                status=status.HTTP_400_BAD_REQUEST,
+            return CustomResponse.error(
+                message="You have already reviewed this project.",
+                status_code=status.HTTP_409_CONFLICT,
+                err_code=ErrorCode.ALREADY_EXISTS,
             )
 
         # Create a review using the request data
@@ -336,7 +419,11 @@ class ReviewCreateView(APIView):
 
         project.review_percentage
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return CustomResponse.success(
+            message="Review added successfully.",
+            data=serializer.data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class ProjectReviewListView(APIView):
@@ -353,13 +440,13 @@ class ProjectReviewListView(APIView):
         responses={
             200: SuccessResponseSerializer,  # List of reviews for the project
             404: ErrorResponseSerializer,  # Project not found
-        },
+        },  # TODO: PUT IN SCHEMA LATER
     )
-    def get(self, request, slug):
+    def get(self, slug):
         try:
             project = Project.objects.get(slug=slug)
         except Project.DoesNotExist:
-            raise Http404("Project not found")
+            raise NotFoundError(err_msg="Project not found")
 
         # Retrieve all reviews for the specified project
         reviews = Review.objects.filter(project=project)
@@ -367,4 +454,9 @@ class ProjectReviewListView(APIView):
         # Serialize the queryset
         serializer = self.serializer_class(reviews, many=True)
         # Return serialized data in response
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return CustomResponse.success(
+            message="Project with reviews retrieved successfully.",
+            data=serializer.data,
+            status=status.HTTP_200_OK,
+        )

@@ -1,24 +1,21 @@
-from django.forms import ValidationError
-from django.core.validators import RegexValidator
-from uuid import UUID
+import re
+
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext as _
 
 
-def validate_name(value):
-    if len(value.split()) > 1:
-        raise ValidationError("No spaces between names")
-    elif not value.isalpha():
-        raise ValidationError("Alphabetical characters only")
-    return value
+class CustomPasswordValidator:
+    def validate(self, password, user=None):
+        if not re.match(
+            r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()-+]).{8,}$", password
+        ):
+            raise ValidationError(
+                _(
+                    "This password must contain at least 8 characters, one uppercase letter, one lowercase letter, one digit and one symbol."
+                )
+            )
 
-
-alternate_validate_name = RegexValidator(
-    regex=r"^[a-zA-Z]*$", message="No spaces between names"
-)
-
-def validate_uuid(uuid_string):
-    try:
-        UUID(uuid_string)  
-        return True
-    except ValueError:
-        return False
-
+    def get_help_text(self):
+        return _(
+            "Your password must contain at least 8 characters, one uppercase letter, one lowercase letter, one digit and one symbol."
+        )
