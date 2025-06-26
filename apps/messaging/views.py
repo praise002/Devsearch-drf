@@ -15,6 +15,12 @@ from apps.common.serializers import (
     ErrorResponseSerializer,
     SuccessResponseSerializer,
 )
+from apps.messaging.schema_examples import (
+    CREATE_MESSAGE_RESPONSE_EXAMPLE,
+    DELETE_MESSAGE_RESPONSE_EXAMPLE,
+    INBOX_RESPONSE_EXAMPLE,
+    VIEW_MESSAGE_RESPONSE_EXAMPLE,
+)
 from apps.profiles.models import Profile
 
 from .models import Message
@@ -44,16 +50,7 @@ class InboxGenericView(ListAPIView):
                 description="Search messages by (e.g., subject or body).",
             ),
         ],
-        responses={
-            200: OpenApiResponse(
-                description="Successfully retrieved inbox messages and unread count",
-                response=SuccessResponseSerializer,
-            ),
-            401: OpenApiResponse(
-                description="Unauthorized access - user must be authenticated",
-                response=ErrorResponseSerializer,
-            ),
-        },  # TODO: MOVE TO SCHEMA LATER
+        responses=INBOX_RESPONSE_EXAMPLE,
         tags=tags,
     )
     def get(self, request, *args, **kwargs):
@@ -85,7 +82,7 @@ class InboxGenericView(ListAPIView):
 
         serializer = self.get_serializer(queryset, many=True)
         return CustomResponse.success(
-            message="Profiles retrieved successfully.",
+            message="Inbox retrieved successfully.",
             data={
                 "results": serializer.data,
                 "unread_count": unread_count,
@@ -103,20 +100,7 @@ class ViewMessage(APIView):
         summary="Retrieve a specific message",
         description="This endpoint allows an authenticated user to retrieve the details of a specific message by ID. If the message is unread, it will automatically be marked as read upon retrieval.",
         tags=tags,
-        responses={
-            200: OpenApiResponse(
-                response=SuccessResponseSerializer,
-                description="Successfully retrieved the message details.",
-            ),
-            404: OpenApiResponse(
-                description="Message not found or invalid message ID.",
-                response=ErrorResponseSerializer,
-            ),
-            401: OpenApiResponse(
-                response=ErrorResponseSerializer,
-                description="Authentication credentials were not provided or invalid.",
-            ),
-        },  # TODO: MOVE TO SCHEMA LATER
+        responses=VIEW_MESSAGE_RESPONSE_EXAMPLE,
     )
     def get(self, request, id):
 
@@ -125,9 +109,7 @@ class ViewMessage(APIView):
                 "sender__user", "recipient"
             ).get(id=id)
         except Message.DoesNotExist:
-            return Response(
-                {"error": "Message not found."}, status=status.HTTP_404_NOT_FOUND
-            )
+            raise NotFoundError(err_msg="Message not found.")
 
         serializer = self.serializer_class(message)
 
@@ -136,10 +118,10 @@ class ViewMessage(APIView):
             message.is_read = True
             message.save()
 
-        data = serializer.validated_data
-
         return CustomResponse.success(
-            data={"is_read": data["is_read"]}, status_code=status.HTTP_200_OK
+            message="Message retrieved successfully.",
+            data=serializer.data,
+            status_code=status.HTTP_200_OK,
         )
 
 
@@ -151,25 +133,12 @@ class CreateMessage(APIView):
         summary="Send a message to a specific user",
         description="This endpoint allows an anyone to send a message to a specific recipient by their profile ID. The sender's profile is automatically associated with the message if they are logged in. Users cannot message themselves.",
         tags=tags,
-        responses={
-            201: OpenApiResponse(
-                response=SuccessResponseSerializer,
-                description="Message successfully created and sent.",
-            ),
-            400: OpenApiResponse(
-                description="Bad request - validation error.",
-                response=ErrorDataResponseSerializer,
-            ),
-            404: OpenApiResponse(
-                description="Recipient profile not found or invalid profile ID.",
-                response=ErrorResponseSerializer,
-            ),
-        },  # TODO: MOVE TO SCHEMA LATER
+        responses=CREATE_MESSAGE_RESPONSE_EXAMPLE,
     )
     def post(self, request, username):
 
         try:
-            recipient = Profile.objects.get(username=username)
+            recipient = Profile.objects.get(user__username=username)
         except Profile.DoesNotExist:
             raise NotFoundError(err_msg="Profile not found.")
 
@@ -184,13 +153,9 @@ class CreateMessage(APIView):
         if sender and sender.id == recipient.id:
             raise ValidationError("You cannot message yourself.")
 
-        data = request.data.copy()
-
-        data["recipient"] = recipient.id
-
-        serializer = self.serializer_class(data=data)
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(sender=sender)
+        serializer.save(sender=sender, recipient=recipient)
 
         return CustomResponse.success(
             message="Message sent successfully.", status_code=status.HTTP_201_CREATED
@@ -205,20 +170,7 @@ class DeleteMessage(APIView):
         summary="Delete a specific message",
         description="This endpoint allows an authenticated user to delete a specific message they received. The message ID must be valid, and the message must belong to the authenticated user. Upon successful deletion, a confirmation message is returned.",
         tags=tags,
-        responses={
-            204: OpenApiResponse(
-                description="Message deleted successfully.",
-                response=SuccessResponseSerializer,
-            ),
-            404: OpenApiResponse(
-                description="Message not found or invalid message ID.",
-                response=ErrorResponseSerializer,
-            ),
-            401: OpenApiResponse(
-                description="Authentication credentials were not provided.",
-                response=ErrorResponseSerializer,
-            ),
-        },  # TODO: MOVE TO SCHEMA LATER
+        responses=DELETE_MESSAGE_RESPONSE_EXAMPLE,
     )
     def delete(self, request, message_id):
         try:
