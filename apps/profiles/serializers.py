@@ -11,7 +11,6 @@ class SkillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Skill
         fields = ["id", "name", "description"]
-        # extra_kwargs = {"description": {"required": False}}
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -20,19 +19,15 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ["id", "username", "email", "first_name", "last_name"]
 
 
-class UserUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ["first_name", "last_name"]
-
-
 class ProfileUpdateSerializer(serializers.ModelSerializer):
-    user = UserUpdateSerializer()
+    first_name = serializers.CharField(source="user.first_name")
+    last_name = serializers.CharField(source="user.last_name")
 
     class Meta:
         model = Profile
         fields = [
-            "user",
+            "first_name",
+            "last_name",
             "short_intro",
             "bio",
             "location",
@@ -41,6 +36,17 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
             "social_twitter",
             "social_linkedin",
         ]
+        
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', {})
+        # update user fields
+        if user_data:
+            user = instance.user
+            for attr, value in user_data.items():
+                setattr(user, attr, value)
+            user.save()
+            
+        return super().update(instance, validated_data)
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -67,10 +73,11 @@ class ProfileSerializer(serializers.ModelSerializer):
     def get_image_url(self, obj):
         return obj.image_url
 
+
 class ImageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
         fields = [
-            "image",
+            "photo",
         ]

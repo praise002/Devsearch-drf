@@ -25,7 +25,7 @@ class Profile(BaseModel):
     bio = models.TextField(blank=True)
     location = models.CharField(max_length=100, blank=True)
     photo = models.ImageField(
-        upload_to="photos/%Y/%m/%d/",
+        upload_to="images/",
         blank=True,
         null=True,
     )

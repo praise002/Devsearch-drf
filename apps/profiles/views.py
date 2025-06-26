@@ -18,8 +18,15 @@ from apps.common.serializers import (
 )
 from apps.profiles.filters import ProfileFilter
 from apps.profiles.schema_examples import (
+    IMAGE_UPDATE_RESPONSE_EXAMPLE,
+    PROFILE_DETAIL_RESPONSE_EXAMPLE,
+    PROFILE_LIST_RESPONSE_EXAMPLE,
     PROFILE_RETRIEVE_RESPONSE_EXAMPLE,
     PROFILE_UPDATE_RESPONSE_EXAMPLE,
+    SKILL_CREATE_RESPONSE_EXAMPLE,
+    SKILL_DELETE_RESPONSE_EXAMPLE,
+    SKILL_GET_RESPONSE_EXAMPLE,
+    SKILL_UPDATE_RESPONSE_EXAMPLE,
     build_avatar_request_schema,
 )
 
@@ -34,7 +41,7 @@ from .serializers import (
 tags = ["Profiles"]
 
 
-class MyProfileView(APIView):  # view account and edit it
+class MyProfileView(APIView):  # view account
     permission_classes = (IsAuthenticated,)
     serializer_class = ProfileSerializer
 
@@ -53,6 +60,11 @@ class MyProfileView(APIView):  # view account and edit it
             status_code=status.HTTP_200_OK,
         )
 
+
+class ProfileUpdateView(APIView):  # edit profile
+    permission_classes = (IsAuthenticated,)
+    serializer_class = ProfileUpdateSerializer
+
     @extend_schema(
         summary="Update user profile",
         description="This endpoint allows authenticated users to edit their profile details. Users can update their personal information. Only the account owner can modify their profile.",
@@ -61,11 +73,11 @@ class MyProfileView(APIView):  # view account and edit it
     )
     def patch(self, request):
         profile = request.user.profile
-        serializer = ProfileUpdateSerializer(profile, data=request.data, partial=True)
+        serializer = self.serializer_class(profile, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
         profile = serializer.save()
-        profile_serializer = self.serializer_class(profile)  # re-serialize
+        profile_serializer = ProfileSerializer(profile)  # re-serialize
 
         return CustomResponse.success(
             message="Profile updated successfully.",
@@ -86,7 +98,7 @@ class ProfileListView(APIView):
         tags=tags,
         responses={
             200: SuccessResponseSerializer,
-        },  # TODO: PUT IN SCHEMA LATER
+        },
     )
     def get(self, request):
         profiles = (
@@ -126,7 +138,7 @@ class ProfileListGenericView(ListAPIView):
         ],
         operation_id="list_profiles",
         tags=["Profiles"],
-        responses={200: SuccessResponseSerializer},  # TODO: PUT IN SCHEMA LATER
+        responses=PROFILE_LIST_RESPONSE_EXAMPLE,
     )
     def get(self, request, *args, **kwargs):
         """
@@ -157,13 +169,9 @@ class ProfileDetailView(APIView):
         summary="View a user's profile details",
         description="This endpoint allows any user, whether authenticated or not, to view detailed information about a specific user's profile. It provides publicly available details. This information is accessible to anyone.",
         tags=tags,
-        responses={
-            200: SuccessResponseSerializer,
-            400: ErrorDataResponseSerializer,
-            422: ErrorDataResponseSerializer,
-        },  # TODO: PUT IN SCHEMA LATER
+        responses=PROFILE_DETAIL_RESPONSE_EXAMPLE,
     )
-    def get(self, username):
+    def get(self, request, username):
         try:
             profile = (
                 Profile.objects.select_related("user")
@@ -178,11 +186,7 @@ class ProfileDetailView(APIView):
             )
 
         except Profile.DoesNotExist:
-            return CustomResponse.error(
-                message="Profile not found.",
-                err_code=ErrorCode.BAD_REQUEST,
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
+            raise NotFoundError(err_msg="Profile not found.")
 
 
 class ImageUpdateView(APIView):
@@ -194,18 +198,19 @@ class ImageUpdateView(APIView):
         description="This endpoint allows authenticated users to upload or update their profile image.",
         tags=tags,
         request=build_avatar_request_schema(),
-        responses=PROFILE_UPDATE_RESPONSE_EXAMPLE,
+        responses=IMAGE_UPDATE_RESPONSE_EXAMPLE,
     )
     def patch(self, request):
         profile = request.user.profile
         serializer = self.serializer_class(profile, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         profile = serializer.save()
-        profile_serializer = ProfileSerializer(profile)  # re-serialize
 
         return CustomResponse.success(
-            message="Profile updated successfully.",
-            data=profile_serializer.data,
+            message="Profile image updated successfully.",
+            data={
+                "image_url": profile.image_url,
+            },
             status_code=status.HTTP_200_OK,
         )
 
@@ -218,17 +223,17 @@ class SkillCreateView(APIView):
         summary="Add a new skill to your profile",
         description="This endpoint allows authenticated users to add a new skill to their profile. The user can specify skill details, which will be saved and associated with their profile. This endpoint requires authentication and is only accessible to logged-in users.",
         tags=tags,
-        responses={
-            201: SuccessResponseSerializer,
-            400: ErrorDataResponseSerializer,
-            401: ErrorResponseSerializer,
-        },  # TODO: PUT IN SCHEMA LATER
+        responses=SKILL_CREATE_RESPONSE_EXAMPLE,
     )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(user=request.user.profile)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return CustomResponse.success(
+            message="Skill created successfully.",
+            data=serializer.data,
+            status_code=status.HTTP_201_CREATED,
+        )
 
 
 class SkillDetailView(APIView):  # detail, edit, delete
@@ -246,17 +251,13 @@ class SkillDetailView(APIView):  # detail, edit, delete
         summary="View a specific skill",
         description="This endpoint allows authenticated users to retrieve the details of a specific skill. Users must be logged in to access this functionality, as it is restricted to authenticated users only.",
         tags=tags,
-        responses={
-            200: SuccessResponseSerializer,
-            401: ErrorResponseSerializer,
-            404: ErrorResponseSerializer,
-        },  # TODO: PUT IN SCHEMA LATER
+        responses=SKILL_GET_RESPONSE_EXAMPLE,
     )
-    def get(self, id):
+    def get(self, request, id):
         skill = self.get_object(id)
         serializer = self.serializer_class(skill)
         return CustomResponse.success(
-            message="Skills retrieved successfully.",
+            message="Skill retrieved successfully.",
             data=serializer.data,
             status_code=status.HTTP_200_OK,
         )
@@ -265,11 +266,7 @@ class SkillDetailView(APIView):  # detail, edit, delete
         summary="Update a specific skill",
         description="This endpoint allows authenticated users to update a specific skill. Users must be logged in to access this functionality, as it is restricted to authenticated users only.",
         tags=tags,
-        responses={
-            200: SuccessResponseSerializer,
-            401: ErrorResponseSerializer,
-            404: ErrorResponseSerializer,
-        },  # TODO: PUT IN SCHEMA LATER
+        responses=SKILL_UPDATE_RESPONSE_EXAMPLE,
     )
     def patch(self, request, id):
         skill = self.get_object(id)
@@ -286,16 +283,9 @@ class SkillDetailView(APIView):  # detail, edit, delete
         summary="Delete a specific skill",
         description="This endpoint allows authenticated users to delete a specific skill from their profile. Users must be logged in to access this functionality, as it is restricted to authenticated users only.",
         tags=tags,
-        responses={
-            204: SuccessResponseSerializer,
-            401: ErrorResponseSerializer,
-            404: ErrorResponseSerializer,
-        },  # TODO: PUT IN SCHEMA LATER
+        responses=SKILL_DELETE_RESPONSE_EXAMPLE,
     )
-    def delete(self, id):
+    def delete(self, request, id):
         skill = self.get_object(id)
         skill.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-# REWORK ON ALL SCHEMAS FOR THE REAL RESULT

@@ -166,10 +166,10 @@ class CreateMessage(APIView):
             ),
         },  # TODO: MOVE TO SCHEMA LATER
     )
-    def post(self, request, profile_id):
+    def post(self, request, username):
 
         try:
-            recipient = Profile.objects.get(id=profile_id)
+            recipient = Profile.objects.get(username=username)
         except Profile.DoesNotExist:
             raise NotFoundError(err_msg="Profile not found.")
 
