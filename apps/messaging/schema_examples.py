@@ -6,38 +6,6 @@ from apps.common.schema_examples import ERR_RESPONSE_STATUS, SUCCESS_RESPONSE_ST
 from apps.common.serializers import ErrorDataResponseSerializer, ErrorResponseSerializer
 from apps.messaging.serializers import MessageSerializer
 
-# {
-#   "status": "success",
-#   "message": "Profiles retrieved successfully.",
-#   "data": {
-#     "results": [
-#       {
-#         "id": "0f13428d-6ae5-4c3e-bf62-0723a9fa10c6",
-#         "sender": "e2985dac-bb6b-4c19-94e1-77cffe375cda",
-#         "recipient": "efbfdd5b-5296-42ca-8267-7cdf951e296b",
-#         "name": "Hannah",
-#         "email": "hannah@gmail.com",
-#         "subject": "Test Subject",
-#         "body": "Test body",
-#         "is_read": false,
-#         "created": "2025-06-26T16:48:39.411093Z"
-#       },
-#       {
-#         "id": "acfeae69-beba-441a-8b21-a429d643b7e3",
-#         "sender": null,
-#         "recipient": "efbfdd5b-5296-42ca-8267-7cdf951e296b",
-#         "name": "string",
-#         "email": "user@example.com",
-#         "subject": "string",
-#         "body": "string",
-#         "is_read": false,
-#         "created": "2025-06-26T16:33:58.509365Z"
-#       }
-#     ],
-#     "unread_count": 2
-#   }
-# }
-
 MESSAGES_EXAMPLE = [
     {
         "id": "0f13428d-6ae5-4c3e-bf62-0723a9fa10c6",
@@ -86,7 +54,7 @@ INBOX_RESPONSE_EXAMPLE = {
                 value={
                     "status": SUCCESS_RESPONSE_STATUS,
                     "message": "Inbox retrieved successfully.",
-                    "data": MESSAGES_EXAMPLE,
+                    "data": {"results": MESSAGES_EXAMPLE, "unread_count": 2},
                 },
             ),
         ],

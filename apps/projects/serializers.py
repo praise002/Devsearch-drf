@@ -1,6 +1,8 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from apps.common.serializers import SuccessResponseSerializer
+
 from .models import Project, Review, Tag
 
 
@@ -75,3 +77,6 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ["id", "value", "content"]
+
+class ProjectResponseSerializer(SuccessResponseSerializer):
+    data = ProjectSerializer()

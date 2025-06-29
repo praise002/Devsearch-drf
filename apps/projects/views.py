@@ -2,8 +2,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.filters import SearchFilter
-from rest_framework.generics import ListAPIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.generics import ListCreateAPIView
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -18,6 +18,12 @@ from apps.common.serializers import (
 )
 from apps.profiles.schema_examples import build_avatar_request_schema
 from apps.projects.filters import ProjectFilter
+from apps.projects.schema_examples import (
+    PROJECT_CREATE_RESPONSE_EXAMPLE,
+    PROJECT_DETAIL_RESPONSE_EXAMPLE,
+    PROJECT_LIST_EXAMPLE,
+    RELATED_PROJECT_RESPONSE_EXAMPLE,
+)
 
 from .models import Project, Review, Tag
 from .serializers import (
@@ -31,37 +37,86 @@ from .serializers import (
 tags = ["Projects"]
 
 
-class ProjectListView(APIView):
-    serializer_class = ProjectSerializer
+class ProjectListCreateView(APIView):
     paginator_class = CustomPagination()
     paginator_class.page_size = 10
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get_serializer_class(self, request=None):
+        """
+        Helper method to select serializer class based on request method.
+        """
+        if request and request.method == "POST":
+            return ProjectCreateSerializer
+        return ProjectSerializer
+
+    def get_serializer(self, *args, **kwargs):
+        """
+        Helper to get an instance of the correct serializer.
+        """
+        serializer_class = self.get_serializer_class(
+            kwargs.get("request") or self.request
+        )
+        return serializer_class(*args, **kwargs)
 
     @extend_schema(
         summary="Retrieve a list of user projects",
         description="This endpoint allows authenticated and unauthenticated users to view a list of all user projects in the system.",
         operation_id="list_projects",
         tags=tags,
-        responses={
-            200: SuccessResponseSerializer,
-        },  # TODO: PUT IN SCHEMA LATER
+        responses=PROJECT_LIST_EXAMPLE,
     )
     def get(self, request):
         projects = Project.objects.select_related("owner").prefetch_related("tags")
         paginated_projects = self.paginator_class.paginate_queryset(projects, request)
-        serializer = self.serializer_class(paginated_projects, many=True)
+        serializer = self.get_serializer(paginated_projects, many=True)
 
         return self.paginator_class.get_paginated_response(serializer.data)
 
+    @extend_schema(
+        summary="Create a new project",
+        description="This endpoint allows authenticated users to create a new project. The user must be logged in to submit project details. Once the project is created, it is saved in the system and can be retrieved or updated later.",
+        tags=tags,
+        responses=PROJECT_CREATE_RESPONSE_EXAMPLE,
+    )
+    def post(self, request):
+        serializer = self.get_serializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
 
-class ProjectListGenericView(ListAPIView):
+        project = serializer.save()
+        project_serializer = ProjectSerializer(project)  # re-serialize
+        return CustomResponse.success(
+            message="Project created successfully.",
+            data=project_serializer.data,
+            status_code=status.HTTP_201_CREATED,
+        )
+
+
+class ProjectListCreateGenericView(ListCreateAPIView):
     queryset = Project.objects.select_related("owner__user").prefetch_related(
         "tags", "reviews"
     )
-    serializer_class = ProjectSerializer
+
     filter_backends = (DjangoFilterBackend, SearchFilter)
     filterset_class = ProjectFilter
     search_fields = ["title", "description", "tags__name"]
     pagination_class = DefaultPagination
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return ProjectCreateSerializer
+        return ProjectSerializer
 
     @extend_schema(
         summary="Retrieve a list of user projects",
@@ -78,16 +133,14 @@ class ProjectListGenericView(ListAPIView):
         ],
         operation_id="list_projects",
         tags=tags,
-        responses={
-            200: SuccessResponseSerializer,
-        },  # TODO: PUT IN SCHEMA LATER
+        responses=PROJECT_LIST_EXAMPLE,
     )
     def get(self, request, *args, **kwargs):
         """
         Handle GET requests to retrieve projects with pagination, search, and filtering.
         """
         return super().get(request, *args, **kwargs)
-    
+
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
 
@@ -100,36 +153,126 @@ class ProjectListGenericView(ListAPIView):
         return CustomResponse.success(
             message="Projects retrieved successfully.",
             data=serializer.data,
-            status_code=status.HTTP_200_OK
+            status_code=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        summary="Create a new project",
+        description="This endpoint allows authenticated users to create a new project. The user must be logged in to submit project details. Once the project is created, it is saved in the system and can be retrieved or updated later.",
+        tags=tags,
+        responses=PROJECT_CREATE_RESPONSE_EXAMPLE,
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        project = serializer.save()
+
+        project_serializer = ProjectSerializer(project)  # re-serialize
+        return CustomResponse.success(
+            message="Project created successfully.",
+            data=project_serializer.data,
+            status_code=status.HTTP_201_CREATED,
         )
 
 
-class ProjectDetailView(APIView):
-    serializer_class = ProjectSerializer
+class ProjectRetrieveUpdateDestroyView(APIView):
+
+    def get_object(self, profile, slug):
+        try:
+            project = Project.objects.get(owner=profile, slug=slug)
+            return project
+        except Project.DoesNotExist:
+            raise NotFoundError(err_msg="Project not found.")
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get_serializer_class(self, request=None):
+        """
+        Helper method to select serializer class based on request method.
+        """
+        if request and request.method != "GET":
+            return ProjectCreateSerializer
+        return ProjectSerializer
+
+    def get_serializer(self, *args, **kwargs):
+        """
+        Helper to get an instance of the correct serializer.
+        """
+        serializer_class = self.get_serializer_class(
+            kwargs.get("request") or self.request
+        )
+        return serializer_class(*args, **kwargs)
 
     @extend_schema(
         summary="View a project details",
         description="This endpoint allows authenticated and unauthenticated users to view detailed information about a specific project.",
         tags=tags,
-        responses={
-            200: SuccessResponseSerializer,
-            404: ErrorResponseSerializer,
-        },  # TODO: PUT IN SCHEMA LATER
+        responses=PROJECT_DETAIL_RESPONSE_EXAMPLE,
     )
-    def get(self, slug):
+    def get(self, request, slug):
         try:
             project = (
                 Project.objects.select_related("owner__user")
                 .prefetch_related("tags")
                 .get(slug=slug)
             )
-            serializer = ProjectSerializer(project)
+            serializer = self.get_serializer(project)
             return CustomResponse.success(
                 message="Project detail retrieved successfully.",
-                data=serializer.data, status_code=status.HTTP_200_OK
+                data=serializer.data,
+                status_code=status.HTTP_200_OK,
             )
         except Project.DoesNotExist:
             raise NotFoundError(err_msg="Project not found.")
+
+    @extend_schema(
+        summary="Edit a specific project",
+        description="This endpoint allows authenticated users to edit the details of an existing project. The user must be the project owner to edit the project.",
+        tags=tags,
+        responses={
+            200: SuccessResponseSerializer,
+            400: ErrorDataResponseSerializer,
+            401: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+        },  # TODO: PUT IN SCHEMA LATER
+    )
+    def patch(self, request, slug):
+        profile = request.user.profile
+
+        project = self.get_object(profile, slug)
+        serializer = self.get_serializer(project, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        project = serializer.save()
+
+        project_serializer = ProjectSerializer(project)
+        return CustomResponse.success(
+            message="Project updated successfully.",
+            data=project_serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        summary="Delete a specific project",
+        description="This endpoint allows authenticated users to delete an existing project. Only the project owner can delete the project. The project will be permanently removed from the system.",
+        tags=tags,
+        responses={
+            204: None,  # Successfully deleted project (no content in response body)
+            401: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+        },  # TODO: PUT IN SCHEMA LATER
+    )
+    def delete(self, request, slug):
+        profile = request.user.profile
+
+        project = self.get_object(profile, slug)
+        project.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class RelatedProjectsView(APIView):
@@ -143,12 +286,9 @@ class RelatedProjectsView(APIView):
         summary="View related projects for a specific project",
         description="This endpoint allows users to view a list of projects that are related to a specific project. The related projects are determined based on project categories, tags, or other relevant factors. Users can retrieve a list of related projects, which may help them discover similar or complementary projects within the platform.",
         tags=tags,
-        responses={
-            200: SuccessResponseSerializer,
-            404: ErrorResponseSerializer,
-        },  # TODO: PUT IN SCHEMA LATER
+        responses=RELATED_PROJECT_RESPONSE_EXAMPLE,
     )
-    def get(self, slug):
+    def get(self, request, slug):
         try:
             project = (
                 Project.objects.select_related("owner__user")
@@ -175,34 +315,6 @@ class RelatedProjectsView(APIView):
             raise NotFoundError(err_msg="Project not found.")
 
 
-class ProjectCreateView(APIView):
-    permission_classes = (IsAuthenticated,)
-    serializer_class = ProjectSerializer
-
-    @extend_schema(
-        summary="Create a new project",
-        description="This endpoint allows authenticated users to create a new project. The user must be logged in to submit project details. Once the project is created, it is saved in the system and can be retrieved or updated later.",
-        tags=tags,
-        responses={
-            200: SuccessResponseSerializer,
-            400: ErrorResponseSerializer,
-            401: ErrorResponseSerializer,
-        },  # TODO: PUT IN SCHEMA LATER
-    )
-    def post(self, request):
-        serializer = ProjectCreateSerializer(
-            data=request.data, context={"request": request}
-        )
-        serializer.is_valid(raise_exception=True)
-
-        project = serializer.save()
-        project_serializer = self.serializer_class(project)  # re-serialize
-        return CustomResponse.success(
-            message="Project created successfully.",
-            data=project_serializer.data,
-            status_code=status.HTTP_201_CREATED,
-        )
-
 class FeaturedImageUpdateView(APIView):
     serializer_class = FeaturedImageSerializer
     permission_classes = [IsAuthenticated]
@@ -211,7 +323,9 @@ class FeaturedImageUpdateView(APIView):
         summary="Update project featured image",
         description="This endpoint allows authenticated users to upload or update their project featured image.",
         tags=tags,
-        request=build_avatar_request_schema(prop1="featured_image", desc="Featured Image file"),
+        request=build_avatar_request_schema(
+            prop1="featured_image", desc="Featured Image file"
+        ),
         responses={},
     )
     def patch(self, request):
@@ -228,61 +342,13 @@ class FeaturedImageUpdateView(APIView):
         )
 
 
-class ProjectEditDeleteView(APIView):
-    permission_classes = (IsAuthenticated,)
-    serializer_class = ProjectSerializer
-
-    @extend_schema(
-        summary="Edit a specific project",
-        description="This endpoint allows authenticated users to edit the details of an existing project. The user must be the project owner to edit the project.",
-        tags=tags,
-        responses={
-            200: SuccessResponseSerializer,
-            400: ErrorDataResponseSerializer,
-            401: ErrorResponseSerializer,
-            404: ErrorResponseSerializer,
-        },  # TODO: PUT IN SCHEMA LATER
-    )
-    def patch(self, request, slug):
-        profile = request.user.profile
-
-        try:
-            project = Project.objects.get(owner=profile, slug=slug)
-        except Project.DoesNotExist:
-            raise NotFoundError(err_msg="Project not found.")
-        serializer = self.serializer_class(project, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return CustomResponse.success(
-            message="Project updated successfully.",
-            data=serializer.data,
-            status_code=status.HTTP_200_OK,
-        )
-
-    @extend_schema(
-        summary="Delete a specific project",
-        description="This endpoint allows authenticated users to delete an existing project. Only the project owner can delete the project. The project will be permanently removed from the system.",
-        tags=tags,
-        responses={
-            204: ErrorResponseSerializer,  # Successfully deleted project (no content in response body)
-            401: ErrorResponseSerializer,
-            404: ErrorResponseSerializer,
-        },  # TODO: PUT IN SCHEMA LATER
-    )
-    def delete(self, request, slug):
-        profile = request.user.profile
-
-        try:
-            project = Project.objects.get(owner=profile, slug=slug)
-        except Project.DoesNotExist:
-            raise NotFoundError(err_msg="Project not found.")
-        project.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class TagCreateView(APIView):
+class TagListCreateView(APIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = TagSerializer
+    
+    def get(self, request):
+        # all tags - not specific to anyone
+        pass
 
     @extend_schema(
         summary="Create a new tag",
@@ -370,7 +436,13 @@ class TagRemoveView(APIView):
             status=status.HTTP_204_NO_CONTENT,
         )
 
-
+class ReviewListCreateView(APIView):
+    def get(self, request):
+        pass
+    
+    def post(self, request):
+        pass
+    
 class ReviewCreateView(APIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = ReviewSerializer

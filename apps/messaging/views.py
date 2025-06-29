@@ -1,4 +1,4 @@
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.filters import SearchFilter
@@ -10,11 +10,6 @@ from rest_framework.views import APIView
 from apps.common.exceptions import NotFoundError
 from apps.common.pagination import CustomPagination
 from apps.common.responses import CustomResponse
-from apps.common.serializers import (
-    ErrorDataResponseSerializer,
-    ErrorResponseSerializer,
-    SuccessResponseSerializer,
-)
 from apps.messaging.schema_examples import (
     CREATE_MESSAGE_RESPONSE_EXAMPLE,
     DELETE_MESSAGE_RESPONSE_EXAMPLE,
