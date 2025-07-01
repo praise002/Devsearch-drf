@@ -6,13 +6,35 @@ from apps.common.serializers import SuccessResponseSerializer
 from .models import Project, Review, Tag
 
 
+class TagCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ["name"]
+        
+    def validate_name(self, value):
+        if not value.strip().lower():
+            raise serializers.ValidationError("Tag name is required.")
+        return value.strip().lower()
+
+    def create(self, validated_data):
+        # The name is already lowercase from the validate_name
+        tag, created = Tag.objects.get_or_create(name=validated_data["name"])
+        return tag, created
+
+
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = ["id", "name"]
 
+    
+
 
 class ProjectCreateSerializer(serializers.ModelSerializer):
+    url = serializers.HyperlinkedIdentityField(
+        view_name="project_detail", lookup_field="slug"
+    )
+
     class Meta:
         model = Project
         fields = [
@@ -20,6 +42,7 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
             "description",
             "source_link",
             "demo_link",
+            "url",
         ]
 
     def create(self, validated_data):
@@ -77,6 +100,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ["id", "value", "content"]
+
 
 class ProjectResponseSerializer(SuccessResponseSerializer):
     data = ProjectSerializer()

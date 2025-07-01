@@ -103,7 +103,10 @@ LOGIN_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
-    403: ErrorDataResponseSerializer,
+    403: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Permission Denied",
+    ),
     422: ErrorDataResponseSerializer,
 }
 

@@ -187,8 +187,8 @@ IMAGE_UPDATE_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
-    400: ErrorDataResponseSerializer,
     401: UNAUTHORIZED_USER_RESPONSE,
+    422: ErrorDataResponseSerializer,
 }
 
 SKILL_CREATE_RESPONSE_EXAMPLE = {

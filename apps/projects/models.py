@@ -1,4 +1,5 @@
 from autoslug import AutoSlugField
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.common.models import BaseModel
@@ -14,6 +15,8 @@ class Tag(BaseModel):
             models.Index(fields=["name"]),
         ]
 
+    # TODO: FIND A WAY TO THROW AN ERROR IF THE TAG ALREADY EXISTS IN DB
+
     def __str__(self):
         return self.name
 
@@ -24,7 +27,9 @@ class Project(BaseModel):
     owner = models.ForeignKey(
         Profile, related_name="projects", on_delete=models.CASCADE
     )
-    featured_image = models.ImageField(upload_to="featured_image/", blank=True, null=True)
+    featured_image = models.ImageField(
+        upload_to="featured_image/", blank=True, null=True
+    )
     description = models.TextField()
     source_link = models.CharField(max_length=200, blank=True)
     demo_link = models.CharField(max_length=200, blank=True)

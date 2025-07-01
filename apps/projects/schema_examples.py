@@ -2,9 +2,73 @@ from drf_spectacular.utils import OpenApiExample, OpenApiResponse
 
 from apps.accounts.schema_examples import UNAUTHORIZED_USER_RESPONSE
 from apps.common.errors import ErrorCode
-from apps.common.schema_examples import ERR_RESPONSE_STATUS, SUCCESS_RESPONSE_STATUS
-from apps.common.serializers import ErrorDataResponseSerializer, ErrorResponseSerializer
-from apps.projects.serializers import ProjectResponseSerializer, ProjectSerializer
+from apps.common.schema_examples import (
+    AVATAR_URL,
+    ERR_RESPONSE_STATUS,
+    SUCCESS_RESPONSE_STATUS,
+)
+from apps.common.serializers import (
+    ErrorDataResponseSerializer,
+    ErrorResponseSerializer,
+    SuccessResponseSerializer,
+)
+from apps.projects.serializers import ProjectSerializer, TagSerializer
+
+TAGS = [
+    {"id": "cd975686-d423-4591-9207-655ab8b5c04d", "name": "React"},
+    {"id": "090604e6-2f7e-46e3-be6e-73d1521a4697", "name": "Django"},
+]
+
+PROJECTS = [
+    {
+        "id": "82e84127-9c15-45d1-b919-0cd3e4124169",
+        "title": "E-commerce Platform",
+        "slug": "e-commerce-platform",
+        "owner": "Ese Oghene",
+        "featured_image": "null",
+        "featured_image_url": AVATAR_URL,
+        "description": "A full-featured e-commerce platform with payment integration and inventory management.",
+        "source_link": "https://github.com/user/ecommerce-platform",
+        "demo_link": "https://ecommerce-demo.example.com",
+        "tags": [
+            {"id": "cd975686-d423-4591-9207-655ab8b5c04d", "name": "React"},
+            {"id": "090604e6-2f7e-46e3-be6e-73d1521a4697", "name": "Django"},
+        ],
+        "vote_total": 0,
+        "vote_ratio": 0,
+        "review_percentage": "null",
+    },
+    {
+        "id": "8421d7f0-fca2-4f08-a030-2d92963fd697",
+        "title": "Event Management System",
+        "slug": "event-management-system",
+        "owner": "Ese Oghene",
+        "featured_image": "null",
+        "featured_image_url": "",
+        "description": "Platform for organizing and managing events with ticket sales.",
+        "source_link": "https://github.com/user/event-system",
+        "demo_link": "https://events-demo.example.com",
+        "tags": [],
+        "vote_total": 0,
+        "vote_ratio": 0,
+        "review_percentage": "null",
+    },
+    {
+        "id": "43d78658-3d02-4c73-99be-e35bc1e136c4",
+        "title": "Language Learning App",
+        "slug": "language-learning-app",
+        "owner": "Ese Oghene",
+        "featured_image": "null",
+        "featured_image_url": "",
+        "description": "Interactive platform for learning new languages with speech recognition.",
+        "source_link": "https://github.com/user/language-app",
+        "demo_link": "https://language-demo.example.com",
+        "tags": [],
+        "vote_total": 0,
+        "vote_ratio": 0,
+        "review_percentage": "null",
+    },
+]
 
 PROJECT_EXAMPLE = {
     "id": "82e84127-9c15-45d1-b919-0cd3e4124169",
@@ -62,7 +126,20 @@ PROJECT_CREATE_EXAMPLE = {
 
 
 PROJECT_LIST_EXAMPLE = {
-    200: ProjectResponseSerializer,
+    200: OpenApiResponse(
+        description="Projects Fetched",
+        response=ProjectSerializer,
+        examples=[
+            OpenApiExample(
+                name="Success Response",
+                value={
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Projects retrieved successfully.",
+                    "data": PROJECTS,
+                },
+            ),
+        ],
+    ),
 }
 
 PROJECT_CREATE_RESPONSE_EXAMPLE = {
@@ -116,6 +193,65 @@ PROJECT_DETAIL_RESPONSE_EXAMPLE = {
     ),
 }
 
+PROJECT_UPDATE_EXAMPLE = {
+    200: OpenApiResponse(
+        description="Project Update Successfull",
+        response=ProjectSerializer,
+        examples=[
+            OpenApiExample(
+                name="Success Response",
+                value={
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Project updated successfully.",
+                    "data": PROJECT_EXAMPLE,
+                },
+            ),
+        ],
+    ),
+    401: UNAUTHORIZED_USER_RESPONSE,
+    403: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Permission Denied",
+    ),
+    404: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Project not found",
+        examples=[
+            OpenApiExample(
+                name="Project not found",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "Project not found.",
+                    "code": ErrorCode.NON_EXISTENT,
+                },
+            ),
+        ],
+    ),
+    422: ErrorDataResponseSerializer,
+}
+
+PROJECT_DELETE_RESPONSE = {
+    204: None,
+    401: UNAUTHORIZED_USER_RESPONSE,
+    403: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Permission Denied",
+    ),
+    404: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Project not found",
+        examples=[
+            OpenApiExample(
+                name="Project not found",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "Project not found.",
+                    "code": ErrorCode.NON_EXISTENT,
+                },
+            ),
+        ],
+    ),
+}
 
 RELATED_PROJECT_RESPONSE_EXAMPLE = {
     200: OpenApiResponse(
@@ -146,4 +282,98 @@ RELATED_PROJECT_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
+}
+
+FEATURED_IMAGE_UPDATE_RESPONSE_EXAMPLE = {
+    200: OpenApiResponse(
+        description="Featured Image Update Successful",
+        response=ProjectSerializer,
+        examples=[
+            OpenApiExample(
+                name="Success Response",
+                value={
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Project image updated successfully.",
+                    "data": {
+                        "featured_image_url": AVATAR_URL,
+                    },
+                },
+            ),
+        ],
+    ),
+    401: UNAUTHORIZED_USER_RESPONSE,
+    422: ErrorDataResponseSerializer,
+}
+
+TAG_LIST_RESPONSE_EXAMPLE = {
+    200: OpenApiResponse(
+        description="Tags Fetched",
+        response=TagSerializer,
+        examples=[
+            OpenApiExample(
+                name="Success Response",
+                value={
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Tags retrieved successfully.",
+                    "data": PROJECTS,
+                },
+            ),
+        ],
+    ),
+}
+TAG_CREATE_RESPONSE_EXAMPLE = {
+    201: SuccessResponseSerializer,
+    400: ErrorResponseSerializer,
+    401: ErrorResponseSerializer,
+    403: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Permission Denied",
+    ),
+}
+
+TAG_REMOVE_RESPONSE_EXAMPLE = {
+    204: None,
+    401: UNAUTHORIZED_USER_RESPONSE,
+    403: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Permission Denied",
+    ),
+    404: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Not found",
+        examples=[
+            OpenApiExample(
+                name="Project not found",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "Project not found.",
+                    "code": ErrorCode.NON_EXISTENT,
+                },
+            ),
+            OpenApiExample(
+                name="Tag not found",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "Tag not found.",
+                    "code": ErrorCode.NON_EXISTENT,
+                },
+            ),
+        ],
+    ),
+}
+
+REVIEW_GET_RESPONSE_EXAMPLE = {
+    200: SuccessResponseSerializer,
+    404: ErrorResponseSerializer,
+}
+
+REVIEW_CREATE_RESPONSE_EXAMPLE = {
+    201: SuccessResponseSerializer,
+    400: ErrorDataResponseSerializer,
+    403: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Permission Denied",
+    ),
+    404: ErrorResponseSerializer,
+    401: ErrorResponseSerializer,
 }
