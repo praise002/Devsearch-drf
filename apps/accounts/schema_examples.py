@@ -70,7 +70,10 @@ REGISTER_RESPONSE_EXAMPLE = {
         ],
     ),
     400: ErrorDataResponseSerializer,
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
 
 LOGIN_RESPONSE_EXAMPLE = {
@@ -107,7 +110,10 @@ LOGIN_RESPONSE_EXAMPLE = {
         response=ErrorResponseSerializer,
         description="Permission Denied",
     ),
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
 
 RESEND_VERIFICATION_EMAIL_RESPONSE_EXAMPLE = {
@@ -133,7 +139,10 @@ RESEND_VERIFICATION_EMAIL_RESPONSE_EXAMPLE = {
         ],
     ),
     400: ErrorDataResponseSerializer,
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
 
 VERIFY_EMAIL_RESPONSE_EXAMPLE = {
@@ -151,8 +160,14 @@ VERIFY_EMAIL_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
-    400: ErrorDataResponseSerializer,
-    422: ErrorDataResponseSerializer,
+    400: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
     498: OpenApiResponse(
         response=VerifyOtpSerializer,
         description="OTP Expired",
@@ -197,7 +212,10 @@ LOGOUT_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
 
 LOGOUT_ALL_RESPONSE_EXAMPLE = {
@@ -236,7 +254,10 @@ PASSWORD_CHANGE_RESPONSE_EXAMPLE = {
         ],
     ),
     401: UNAUTHORIZED_USER_RESPONSE,
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
 
 PASSWORD_RESET_REQUEST_RESPONSE_EXAMPLE = {
@@ -257,7 +278,10 @@ PASSWORD_RESET_REQUEST_RESPONSE_EXAMPLE = {
         ],
     ),
     400: ErrorDataResponseSerializer,
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
 
 VERIFY_OTP_RESPONSE_EXAMPLE = {
@@ -279,7 +303,10 @@ VERIFY_OTP_RESPONSE_EXAMPLE = {
         ],
     ),
     400: ErrorDataResponseSerializer,
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
     498: OpenApiResponse(
         response=VerifyOtpSerializer,
         description="OTP Expired",
@@ -313,7 +340,10 @@ PASSWORD_RESET_DONE_RESPONSE_EXAMPLE = {
         ],
     ),
     400: ErrorDataResponseSerializer,
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
 
 REFRESH_TOKEN_RESPONSE_EXAMPLE = {
@@ -348,5 +378,8 @@ REFRESH_TOKEN_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }

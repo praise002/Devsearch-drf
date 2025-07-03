@@ -7,7 +7,7 @@ from apps.profiles.models import Profile
 
 
 class Tag(BaseModel):
-    name = models.CharField(max_length=50, blank=True)
+    name = models.CharField(max_length=50, unique=True)
 
     class Meta:
         ordering = ["-created"]
@@ -15,7 +15,10 @@ class Tag(BaseModel):
             models.Index(fields=["name"]),
         ]
 
-    # TODO: FIND A WAY TO THROW AN ERROR IF THE TAG ALREADY EXISTS IN DB
+    def clean(self):
+        if self.name:
+            self.name = self.name.lower()
+        super().clean()
 
     def __str__(self):
         return self.name

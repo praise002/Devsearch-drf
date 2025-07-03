@@ -10,6 +10,9 @@ class TagCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = ["name"]
+        extra_kwargs = {
+            'name': {'validators': []}  # Remove default unique validator
+        }
         
     def validate_name(self, value):
         if not value.strip().lower():

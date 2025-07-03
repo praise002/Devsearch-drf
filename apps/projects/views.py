@@ -12,11 +12,6 @@ from apps.common.errors import ErrorCode
 from apps.common.exceptions import NotFoundError
 from apps.common.pagination import CustomPagination, DefaultPagination
 from apps.common.responses import CustomResponse
-from apps.common.serializers import (
-    ErrorDataResponseSerializer,
-    ErrorResponseSerializer,
-    SuccessResponseSerializer,
-)
 from apps.profiles.schema_examples import build_avatar_request_schema
 from apps.projects.filters import ProjectFilter
 from apps.projects.mixins import HeaderMixin
@@ -198,7 +193,7 @@ class ProjectListCreateGenericView(ListCreateAPIView):
 
 class ProjectRetrieveUpdateDestroyView(APIView):
 
-    def get_object(self, slug):
+    def get_project(self, slug):
         try:
             project = Project.objects.prefetch_related("tags").get(slug=slug)
             return project
@@ -234,7 +229,7 @@ class ProjectRetrieveUpdateDestroyView(APIView):
         responses=PROJECT_DETAIL_RESPONSE_EXAMPLE,
     )
     def get(self, request, slug):
-        project = self.get_object(slug)
+        project = self.get_project(slug)
 
         serializer = self.get_serializer(project)
         return CustomResponse.success(
@@ -250,7 +245,7 @@ class ProjectRetrieveUpdateDestroyView(APIView):
         responses=PROJECT_UPDATE_EXAMPLE,
     )
     def patch(self, request, slug):
-        project = Project.objects.get(slug=slug)  # Safe because permission validated
+        project = self.get_project(slug)
 
         serializer = self.get_serializer(project, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -270,7 +265,7 @@ class ProjectRetrieveUpdateDestroyView(APIView):
         responses=PROJECT_DELETE_RESPONSE,
     )
     def delete(self, request, slug):
-        project = Project.objects.get(slug=slug)  # Safe because permission validated
+        project = self.get_project(slug)
         project.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -499,11 +494,11 @@ class TagRemoveView(APIView):
 class ReviewListCreateView(APIView):
     serializer_class = ReviewSerializer
 
-    def get_object(self, slug):
+    def get_project(self, slug):
         try:
             return Project.objects.get(slug=slug)
         except Project.DoesNotExist:
-            raise NotFoundError(err_msg="Project not found")
+            raise NotFoundError(err_msg="Project not found.")
 
     def get_permissions(self):
         if self.request.method == "GET":
@@ -516,8 +511,8 @@ class ReviewListCreateView(APIView):
         tags=tags,
         responses=REVIEW_GET_RESPONSE_EXAMPLE,
     )
-    def get(self, slug):
-        project = self.get_object(slug)
+    def get(self, request, slug):
+        project = self.get_project(slug)
 
         # Retrieve all reviews for the specified project
         reviews = Review.objects.filter(project=project)
@@ -529,7 +524,7 @@ class ReviewListCreateView(APIView):
         return CustomResponse.success(
             message="Project reviews retrieved successfully.",
             data=serializer.data,
-            status=status.HTTP_200_OK,
+            status_code=status.HTTP_200_OK,
         )
 
     @extend_schema(
@@ -540,7 +535,7 @@ class ReviewListCreateView(APIView):
     )
     def post(self, request, slug):
         # Retrieve the project
-        project = self.get_object(slug)
+        project = self.get_project(slug)
 
         # Check if the user is trying to review their own project
         if project.owner == request.user.profile:
@@ -570,5 +565,5 @@ class ReviewListCreateView(APIView):
         return CustomResponse.success(
             message="Review added successfully.",
             data=serializer.data,
-            status=status.HTTP_201_CREATED,
+            status_code=status.HTTP_201_CREATED,
         )

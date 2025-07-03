@@ -122,7 +122,10 @@ CREATE_MESSAGE_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
 
 

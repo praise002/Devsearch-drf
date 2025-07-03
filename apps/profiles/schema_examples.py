@@ -188,7 +188,10 @@ IMAGE_UPDATE_RESPONSE_EXAMPLE = {
         ],
     ),
     401: UNAUTHORIZED_USER_RESPONSE,
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
 
 SKILL_CREATE_RESPONSE_EXAMPLE = {
@@ -215,7 +218,10 @@ SKILL_CREATE_RESPONSE_EXAMPLE = {
         ],
     ),
     401: UNAUTHORIZED_USER_RESPONSE,
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
 
 SKILL_GET_RESPONSE_EXAMPLE = {
@@ -280,7 +286,10 @@ SKILL_UPDATE_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
 
 SKILL_DELETE_RESPONSE_EXAMPLE = {

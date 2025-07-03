@@ -6,17 +6,31 @@ from apps.common.schema_examples import (
     AVATAR_URL,
     ERR_RESPONSE_STATUS,
     SUCCESS_RESPONSE_STATUS,
+    UUID_EXAMPLE,
 )
-from apps.common.serializers import (
-    ErrorDataResponseSerializer,
-    ErrorResponseSerializer,
-    SuccessResponseSerializer,
-)
-from apps.projects.serializers import ProjectSerializer, TagSerializer
+from apps.common.serializers import ErrorDataResponseSerializer, ErrorResponseSerializer
+from apps.projects.serializers import ProjectSerializer, ReviewSerializer, TagSerializer
 
 TAGS = [
     {"id": "cd975686-d423-4591-9207-655ab8b5c04d", "name": "React"},
     {"id": "090604e6-2f7e-46e3-be6e-73d1521a4697", "name": "Django"},
+]
+
+TAG = {"id": "9b57e617-3937-45c7-8acf-7fee0f44d7e3", "name": "supabase"}
+
+REVIEW = {
+    "id": "1d9ea9d4-e158-4095-a8e5-b340a80d3cbd",
+    "value": "up",
+    "content": "Test",
+}
+
+REVIEWS = [
+    {
+        "id": "1d9ea9d4-e158-4095-a8e5-b340a80d3cbd",
+        "value": "up",
+        "content": "Review 1",
+    },
+    {"id": UUID_EXAMPLE, "value": "down", "content": "Review 2"},
 ]
 
 PROJECTS = [
@@ -158,7 +172,10 @@ PROJECT_CREATE_RESPONSE_EXAMPLE = {
         ],
     ),
     401: UNAUTHORIZED_USER_RESPONSE,
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
 
 
@@ -227,7 +244,10 @@ PROJECT_UPDATE_EXAMPLE = {
             ),
         ],
     ),
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
 
 PROJECT_DELETE_RESPONSE = {
@@ -302,7 +322,10 @@ FEATURED_IMAGE_UPDATE_RESPONSE_EXAMPLE = {
         ],
     ),
     401: UNAUTHORIZED_USER_RESPONSE,
-    422: ErrorDataResponseSerializer,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
 
 TAG_LIST_RESPONSE_EXAMPLE = {
@@ -315,19 +338,72 @@ TAG_LIST_RESPONSE_EXAMPLE = {
                 value={
                     "status": SUCCESS_RESPONSE_STATUS,
                     "message": "Tags retrieved successfully.",
-                    "data": PROJECTS,
+                    "data": TAGS,
                 },
             ),
         ],
     ),
 }
+
 TAG_CREATE_RESPONSE_EXAMPLE = {
-    201: SuccessResponseSerializer,
-    400: ErrorResponseSerializer,
-    401: ErrorResponseSerializer,
+    200: OpenApiResponse(
+        description="Tag Added to Project",
+        response=TagSerializer,
+        examples=[
+            OpenApiExample(
+                name="Success Response 1",
+                value={
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Existing tag added to project successfully.",
+                    "data": TAG,
+                },
+            ),
+            OpenApiExample(
+                name="Success Response 2",
+                value={
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Tag already associated with this project.",
+                    "data": TAG,
+                },
+            ),
+        ],
+    ),
+    201: OpenApiResponse(
+        description="Tag Created and Added to Project",
+        response=TagSerializer,
+        examples=[
+            OpenApiExample(
+                name="Success Response",
+                value={
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "New tag created and added to project successfully.",
+                    "data": TAG,
+                },
+            ),
+        ],
+    ),
+    401: UNAUTHORIZED_USER_RESPONSE,
     403: OpenApiResponse(
         response=ErrorResponseSerializer,
         description="Permission Denied",
+    ),
+    404: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Project not found",
+        examples=[
+            OpenApiExample(
+                name="Project not found",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "Project not found.",
+                    "code": ErrorCode.NON_EXISTENT,
+                },
+            ),
+        ],
+    ),
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
     ),
 }
 
@@ -363,17 +439,96 @@ TAG_REMOVE_RESPONSE_EXAMPLE = {
 }
 
 REVIEW_GET_RESPONSE_EXAMPLE = {
-    200: SuccessResponseSerializer,
-    404: ErrorResponseSerializer,
+    200: OpenApiResponse(
+        description="Reviews Fetched",
+        response=ReviewSerializer,
+        examples=[
+            OpenApiExample(
+                name="Success Response",
+                value={
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Project reviews retrieved successfully.",
+                    "data": REVIEWS,
+                },
+            ),
+        ],
+    ),
+    404: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Project not found",
+        examples=[
+            OpenApiExample(
+                name="Project not found",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "Project not found.",
+                    "code": ErrorCode.NON_EXISTENT,
+                },
+            ),
+        ],
+    ),
 }
 
 REVIEW_CREATE_RESPONSE_EXAMPLE = {
-    201: SuccessResponseSerializer,
-    400: ErrorDataResponseSerializer,
-    403: OpenApiResponse(
-        response=ErrorResponseSerializer,
-        description="Permission Denied",
+    201: OpenApiResponse(
+        description="Review Added to Project",
+        response=ReviewSerializer,
+        examples=[
+            OpenApiExample(
+                name="Success Response",
+                value={
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Review added successfully.",
+                    "data": REVIEW,
+                },
+            ),
+        ],
     ),
-    404: ErrorResponseSerializer,
-    401: ErrorResponseSerializer,
+    401: UNAUTHORIZED_USER_RESPONSE,
+    403: OpenApiResponse(
+        description="Permission Denied",
+        response=ReviewSerializer,
+        examples=[
+            OpenApiExample(
+                name="Permission Denied",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "You cannot review your own project.",
+                    "code": ErrorCode.FORBIDDEN,
+                },
+            ),
+        ],
+    ),
+    404: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Project not found",
+        examples=[
+            OpenApiExample(
+                name="Project not found",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "Project not found.",
+                    "code": ErrorCode.NON_EXISTENT,
+                },
+            ),
+        ],
+    ),
+    409: OpenApiResponse(
+        description="Already reviewed Project",
+        response=ReviewSerializer,
+        examples=[
+            OpenApiExample(
+                name="Existing Review",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "You have already reviewed this project.",
+                    "code": ErrorCode.ALREADY_EXISTS,
+                },
+            ),
+        ],
+    ),
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
