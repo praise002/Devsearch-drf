@@ -39,10 +39,8 @@ class TestUtil:
     def create_project(owner):
         project_dict = {
             "title": "Test project",
-            "slug": "test-project",
             "owner": owner,
             "description": "A test project",
-            "featured_image": "",
         }
         project = Project.objects.create(**project_dict)
         return project

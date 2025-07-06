@@ -180,7 +180,6 @@ class ProjectListCreateGenericView(ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        # project_serializer = ProjectSerializer(project)  # re-serialize
         headers = self.get_success_headers(serializer.data)
 
         return CustomResponse.success(
@@ -195,8 +194,10 @@ class ProjectRetrieveUpdateDestroyView(APIView):
 
     def get_project(self, slug):
         try:
-            project = Project.objects.prefetch_related("tags").get(slug=slug)
-            return project
+            obj = Project.objects.prefetch_related("tags").get(slug=slug)
+            # TODO: READ MORE ABOUT WHETHER TO USE THIS OR HAS_PERMISSION FROM THE DOCS AND HOW IT AFFECTS PERFORMANCE
+            self.check_object_permissions(self.request, obj) # This triggers has_object_permission
+            return obj
         except Project.DoesNotExist:
             raise NotFoundError(err_msg="Project not found.")
 

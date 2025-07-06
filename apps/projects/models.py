@@ -31,7 +31,7 @@ class Project(BaseModel):
         Profile, related_name="projects", on_delete=models.CASCADE
     )
     featured_image = models.ImageField(
-        upload_to="featured_image/", blank=True, null=True
+        upload_to="featured_image/", null=True
     )
     description = models.TextField()
     source_link = models.CharField(max_length=200, blank=True)
