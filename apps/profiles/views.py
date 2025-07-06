@@ -1,9 +1,10 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import ListAPIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -21,7 +22,6 @@ from apps.profiles.schema_examples import (
     IMAGE_UPDATE_RESPONSE_EXAMPLE,
     PROFILE_DETAIL_RESPONSE_EXAMPLE,
     PROFILE_LIST_RESPONSE_EXAMPLE,
-    PROFILE_RETRIEVE_RESPONSE_EXAMPLE,
     PROFILE_UPDATE_RESPONSE_EXAMPLE,
     SKILL_CREATE_RESPONSE_EXAMPLE,
     SKILL_DELETE_RESPONSE_EXAMPLE,
@@ -41,29 +41,51 @@ from .serializers import (
 tags = ["Profiles"]
 
 
-class MyProfileView(APIView):  # view account
-    permission_classes = (IsAuthenticated,)
-    serializer_class = ProfileSerializer
+class ProfileRetrieveUpdateView(APIView):
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get_serializer_class(self, request=None):
+        """
+        Helper method to select serializer class based on request method.
+        """
+        if request and request.method != "GET":
+            return ProfileUpdateSerializer
+        return ProfileSerializer
+
+    def get_serializer(self, *args, **kwargs):
+        """
+        Helper to get an instance of the correct serializer.
+        """
+        serializer_class = self.get_serializer_class(
+            kwargs.get("request") or self.request
+        )
+        return serializer_class(*args, **kwargs)
 
     @extend_schema(
-        summary="View a user profile",
-        description="This endpoint allows authenticated users to view their profile details. Users can retrieve their account information. Only the account owner can access their profile.",
+        summary="View a user's profile details",
+        description="View any user's public profile or your own private profile details.",
         tags=tags,
-        responses=PROFILE_RETRIEVE_RESPONSE_EXAMPLE,
+        responses=PROFILE_DETAIL_RESPONSE_EXAMPLE,
     )
-    def get(self, request):
-        profile = request.user.profile
-        serializer = self.serializer_class(profile)
-        return CustomResponse.success(
-            message="Profile retrieved successfully.",
-            data=serializer.data,
-            status_code=status.HTTP_200_OK,
-        )
+    def get(self, request, username):
+        try:
+            profile = (
+                Profile.objects.select_related("user")
+                .prefetch_related("skills")
+                .get(user__username=username)
+            )
+            serializer = self.get_serializer(profile)
+            return CustomResponse.success(
+                message="Profile detail retrieved successfully.",
+                data=serializer.data,
+                status_code=status.HTTP_200_OK,
+            )
 
-
-class ProfileUpdateView(APIView):  # edit profile
-    permission_classes = (IsAuthenticated,)
-    serializer_class = ProfileUpdateSerializer
+        except Profile.DoesNotExist:
+            raise NotFoundError(err_msg="Profile not found.")
 
     @extend_schema(
         summary="Update user profile",
@@ -71,9 +93,12 @@ class ProfileUpdateView(APIView):  # edit profile
         tags=tags,
         responses=PROFILE_UPDATE_RESPONSE_EXAMPLE,
     )
-    def patch(self, request):
+    def patch(self, request, username):
+        if request.user.username != username:
+            raise PermissionDenied("You can only update your own profile.")
+
         profile = request.user.profile
-        serializer = self.serializer_class(profile, data=request.data, partial=True)
+        serializer = self.get_serializer(profile, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
         profile = serializer.save()
@@ -162,33 +187,6 @@ class ProfileListGenericView(ListAPIView):
         )
 
 
-class ProfileDetailView(APIView):
-    serializer_class = ProfileSerializer
-
-    @extend_schema(
-        summary="View a user's profile details",
-        description="This endpoint allows any user, whether authenticated or not, to view detailed information about a specific user's profile. It provides publicly available details. This information is accessible to anyone.",
-        tags=tags,
-        responses=PROFILE_DETAIL_RESPONSE_EXAMPLE,
-    )
-    def get(self, request, username):
-        try:
-            profile = (
-                Profile.objects.select_related("user")
-                .prefetch_related("skills")
-                .get(user__username=username)
-            )
-            serializer = self.serializer_class(profile)
-            return CustomResponse.success(
-                message="Profile detail retrieved successfully.",
-                data=serializer.data,
-                status_code=status.HTTP_200_OK,
-            )
-
-        except Profile.DoesNotExist:
-            raise NotFoundError(err_msg="Profile not found.")
-
-
 class ImageUpdateView(APIView):
     serializer_class = ImageSerializer
     permission_classes = [IsAuthenticated]
@@ -236,15 +234,20 @@ class SkillCreateView(APIView):
         )
 
 
-class SkillDetailView(APIView):  # detail, edit, delete
-    permission_classes = (IsAuthenticated,)
+class SkillDetailUpdateDestroyView(APIView):  # detail, edit, delete
+    permission_classes = (IsAuthenticated,)  # 1 - check auth
     serializer_class = SkillSerializer
 
     def get_object(self, id):
         try:
-            skill = Skill.objects.get(id=id, user=self.request.user.profile)
+            # 2 - check existence
+            skill = Skill.objects.get(id=id)
+            # 3 - check ownership
+            if skill.user != self.request.user.profile:
+                raise PermissionDenied("You don't have permission to access this skill.")
             return skill
         except Skill.DoesNotExist:
+            # Only reaches here if skill doesn't exist AND user is authenticated
             raise NotFoundError(err_msg="Skill not found.")
 
     @extend_schema(

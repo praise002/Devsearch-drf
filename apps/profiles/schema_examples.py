@@ -115,29 +115,27 @@ PROFILE_UPDATE_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
-    400: ErrorDataResponseSerializer,
     401: UNAUTHORIZED_USER_RESPONSE,
-}
-
-PROFILE_RETRIEVE_RESPONSE_EXAMPLE = {
-    # 200: ShippingAddressResponseSerializer,
-    #     401: ErrorResponseSerializer
-    200: OpenApiResponse(
-        description="Profile Retrieve Successful",
-        response=ProfileSerializer,
+    403: OpenApiResponse(
+        description="Permission Denied",
+        response=ErrorResponseSerializer,
         examples=[
             OpenApiExample(
-                name="Success Response",
+                name="Permission Denied",
                 value={
-                    "status": SUCCESS_RESPONSE_STATUS,
-                    "message": "Profile retrieved successfully.",
-                    "data": PROFILE_EXAMPLE,
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "You can only update your own profile.",
+                    "code": ErrorCode.FORBIDDEN,
                 },
             ),
         ],
     ),
-    401: UNAUTHORIZED_USER_RESPONSE,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
 }
+
 
 PROFILE_DETAIL_RESPONSE_EXAMPLE = {
     200: OpenApiResponse(
@@ -240,6 +238,20 @@ SKILL_GET_RESPONSE_EXAMPLE = {
         ],
     ),
     401: UNAUTHORIZED_USER_RESPONSE,
+    403: OpenApiResponse(
+        description="Permission Denied",
+        response=ErrorResponseSerializer,
+        examples=[
+            OpenApiExample(
+                name="Permission Denied",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "You don't have permission to access this skill.",
+                    "code": ErrorCode.FORBIDDEN,
+                },
+            ),
+        ],
+    ),
     404: OpenApiResponse(
         response=ErrorResponseSerializer,
         description="Skill not found",
@@ -272,6 +284,20 @@ SKILL_UPDATE_RESPONSE_EXAMPLE = {
         ],
     ),
     401: UNAUTHORIZED_USER_RESPONSE,
+    403: OpenApiResponse(
+        description="Permission Denied",
+        response=ErrorResponseSerializer,
+        examples=[
+            OpenApiExample(
+                name="Permission Denied",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "You don't have permission to access this skill.",
+                    "code": ErrorCode.FORBIDDEN,
+                },
+            ),
+        ],
+    ),
     404: OpenApiResponse(
         response=ErrorResponseSerializer,
         description="Skill not found",
@@ -295,6 +321,20 @@ SKILL_UPDATE_RESPONSE_EXAMPLE = {
 SKILL_DELETE_RESPONSE_EXAMPLE = {
     204: None,
     401: UNAUTHORIZED_USER_RESPONSE,
+    403: OpenApiResponse(
+        description="Permission Denied",
+        response=ErrorResponseSerializer,
+        examples=[
+            OpenApiExample(
+                name="Permission Denied",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "You don't have permission to access this skill.",
+                    "code": ErrorCode.FORBIDDEN,
+                },
+            ),
+        ],
+    ),
     404: OpenApiResponse(
         response=ErrorResponseSerializer,
         description="Skill not found",

@@ -53,8 +53,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 class Otp(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    otp = models.IntegerField(null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    otp = models.IntegerField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return str(self.otp)

@@ -26,7 +26,6 @@ class Profile(BaseModel):
     location = models.CharField(max_length=100, blank=True)
     photo = models.ImageField(
         upload_to="images/",
-        blank=True,
         null=True,
     )
     updated = models.DateTimeField(auto_now=True)
