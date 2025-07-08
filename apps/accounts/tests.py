@@ -64,6 +64,11 @@ class TestAccounts(APITestCase):
             },
         )
 
+        # Email exists - 422
+        response = self.client.post(self.register_url, valid_data)
+
+        self.assertEqual(response.status_code, 422)
+
         # Invalid Registration - 422
         response = self.client.post(self.register_url, invalid_data)
 
@@ -593,5 +598,4 @@ class TestGoogleOAuth(APITestCase):
         self.assertIn("authorization_url", response.json()["data"])
 
 
-# python manage.py test apps.accounts.tests.TestAccounts.test_register
 # python manage.py test apps.accounts.tests.TestAccounts.test_register

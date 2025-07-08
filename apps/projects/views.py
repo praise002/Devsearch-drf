@@ -192,12 +192,19 @@ class ProjectListCreateGenericView(ListCreateAPIView):
 
 class ProjectRetrieveUpdateDestroyView(APIView):
 
-    def get_project(self, slug):
+    def get_object(self, slug):
         try:
             obj = Project.objects.prefetch_related("tags").get(slug=slug)
-            # TODO: READ MORE ABOUT WHETHER TO USE THIS OR HAS_PERMISSION FROM THE DOCS AND HOW IT AFFECTS PERFORMANCE
+            # TODO: MIGHT CHANGE LATER IF IT AFFECTS QUERY PERFORMANCE
             self.check_object_permissions(self.request, obj) # This triggers has_object_permission
             return obj
+        except Project.DoesNotExist:
+            raise NotFoundError(err_msg="Project not found.")
+        
+    def get_project(self, slug):
+        try:
+            project = Project.objects.prefetch_related("tags").get(slug=slug)
+            return project
         except Project.DoesNotExist:
             raise NotFoundError(err_msg="Project not found.")
 
@@ -246,7 +253,7 @@ class ProjectRetrieveUpdateDestroyView(APIView):
         responses=PROJECT_UPDATE_EXAMPLE,
     )
     def patch(self, request, slug):
-        project = self.get_project(slug)
+        project = self.get_object(slug)
 
         serializer = self.get_serializer(project, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -266,7 +273,7 @@ class ProjectRetrieveUpdateDestroyView(APIView):
         responses=PROJECT_DELETE_RESPONSE,
     )
     def delete(self, request, slug):
-        project = self.get_project(slug)
+        project = self.get_object(slug)
         project.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -313,7 +320,16 @@ class RelatedProjectsView(APIView):
 
 class FeaturedImageUpdateView(APIView):
     serializer_class = FeaturedImageSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsProjectOwner]
+    
+    def get_object(self, slug):
+        try:
+            obj = Project.objects.prefetch_related("tags").get(slug=slug)
+            # TODO: MIGHT CHANGE LATER IF IT AFFECTS QUERY PERFORMANCE
+            self.check_object_permissions(self.request, obj) # This triggers has_object_permission
+            return obj
+        except Project.DoesNotExist:
+            raise NotFoundError(err_msg="Project not found.")
 
     @extend_schema(
         summary="Update project featured image",
@@ -324,11 +340,11 @@ class FeaturedImageUpdateView(APIView):
         ),
         responses=FEATURED_IMAGE_UPDATE_RESPONSE_EXAMPLE,
     )
-    def patch(self, request):
-        profile = request.user.profile
-        serializer = self.serializer_class(profile, data=request.data, partial=True)
+    def patch(self, request, slug):
+        project = self.get_object(slug)
+        serializer = self.serializer_class(project, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        project = serializer.save()
+        serializer.save()
 
         return CustomResponse.success(
             message="Project image updated successfully.",
@@ -395,9 +411,12 @@ class ProjectTagAddView(APIView):
     permission_classes = (IsAuthenticated, IsProjectOwner)
     serializer_class = TagCreateSerializer
 
-    def get_project(self, slug):
+    def get_object(self, slug):
         try:
-            return Project.objects.get(slug=slug)
+            obj = Project.objects.prefetch_related("tags").get(slug=slug)
+            # TODO: MIGHT CHANGE LATER IF IT AFFECTS QUERY PERFORMANCE
+            self.check_object_permissions(self.request, obj) # This triggers has_object_permission
+            return obj
         except Project.DoesNotExist:
             raise NotFoundError(err_msg="Project not found.")
 
@@ -408,7 +427,7 @@ class ProjectTagAddView(APIView):
         responses=TAG_CREATE_RESPONSE_EXAMPLE,
     )
     def post(self, request, slug):
-        project = self.get_project(slug)
+        project = self.get_object(slug)
 
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -457,9 +476,12 @@ class TagRemoveView(APIView):
         except Tag.DoesNotExist:
             raise NotFoundError(err_msg="Tag not found.")
 
-    def get_project(self, slug):
+    def get_object(self, slug):
         try:
-            return Project.objects.get(slug=slug)
+            obj = Project.objects.prefetch_related("tags").get(slug=slug)
+            # TODO: MIGHT CHANGE LATER IF IT AFFECTS QUERY PERFORMANCE
+            self.check_object_permissions(self.request, obj) # This triggers has_object_permission
+            return obj
         except Project.DoesNotExist:
             raise NotFoundError(err_msg="Project not found.")
 
@@ -473,7 +495,7 @@ class TagRemoveView(APIView):
         """Remove a tag from a specific project."""
 
         # Get the project based on the slug
-        project = self.get_project(project_slug)
+        project = self.get_object(project_slug)
 
         # Get the tag based on the tag ID
         tag = self.get_tag(tag_id)

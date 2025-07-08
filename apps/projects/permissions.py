@@ -29,4 +29,4 @@ class IsProjectOwner(permissions.BasePermission):
             return True
 
         # Write permissions are only allowed to the owner of the project.
-        return obj.owner == request.user.profile  # or obj.owner == request.user.profile
+        return obj.owner == request.user.profile  

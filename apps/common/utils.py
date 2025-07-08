@@ -44,6 +44,13 @@ class TestUtil:
         }
         project = Project.objects.create(**project_dict)
         return project
+    
+    def create_tag():
+        tag_dict = {
+            "name": "fastapi"
+        }
+        tag = Tag.objects.create(**tag_dict)
+        return tag
 
     def create_review(project, reviewer):
         review_dict = {
