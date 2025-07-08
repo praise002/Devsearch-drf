@@ -5,14 +5,14 @@ from .models import Message
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = serializers.PrimaryKeyRelatedField(read_only=True)
-    recipient = serializers.PrimaryKeyRelatedField(queryset=Profile.objects.all())
+    # recipient = serializers.PrimaryKeyRelatedField(queryset=Profile.objects.all())
 
     class Meta:
         model = Message
         fields = [
             "id",
             "sender",
-            "recipient",
+            # "recipient",
             "name",
             "email",
             "subject",
@@ -20,4 +20,4 @@ class MessageSerializer(serializers.ModelSerializer):
             "is_read",
             "created",
         ]
-        read_only_fields = ["id", "sender", "created", "is_read"]
+        read_only_fields = ["sender", "created", "is_read"]

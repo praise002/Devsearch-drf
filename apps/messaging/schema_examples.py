@@ -78,6 +78,10 @@ VIEW_MESSAGE_RESPONSE_EXAMPLE = {
         ],
     ),
     401: UNAUTHORIZED_USER_RESPONSE,
+    403: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Permission Denied",
+    ),
     404: OpenApiResponse(
         response=ErrorResponseSerializer,
         description="Message not found",
@@ -108,6 +112,20 @@ CREATE_MESSAGE_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
+    403: OpenApiResponse(
+        description="Permission Denied",
+        response=ErrorResponseSerializer,
+        examples=[
+            OpenApiExample(
+                name="Permission Denied",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "You cannot message yourself.",
+                    "code": ErrorCode.FORBIDDEN,
+                },
+            ),
+        ],
+    ),
     404: OpenApiResponse(
         response=ErrorResponseSerializer,
         description="Profile not found",
@@ -132,6 +150,10 @@ CREATE_MESSAGE_RESPONSE_EXAMPLE = {
 DELETE_MESSAGE_RESPONSE_EXAMPLE = {
     204: None,
     401: UNAUTHORIZED_USER_RESPONSE,
+    403: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Permission Denied",
+    ),
     404: OpenApiResponse(
         response=ErrorResponseSerializer,
         description="Message not found",

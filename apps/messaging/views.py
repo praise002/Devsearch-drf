@@ -1,6 +1,6 @@
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from apps.common.exceptions import NotFoundError
 from apps.common.pagination import CustomPagination
 from apps.common.responses import CustomResponse
+from apps.messaging.permissions import IsMessageOwner
 from apps.messaging.schema_examples import (
     CREATE_MESSAGE_RESPONSE_EXAMPLE,
     DELETE_MESSAGE_RESPONSE_EXAMPLE,
@@ -86,6 +87,57 @@ class InboxGenericView(ListAPIView):
         )
 
 
+class MessageRetrieveDestroyView(APIView):
+    permission_classes = (IsAuthenticated, IsMessageOwner)
+    serializer_class = MessageSerializer
+
+    def get_object(self, id):
+        try:
+            obj = Message.objects.get(id=id)
+
+            # TODO: MIGHT CHANGE LATER IF IT AFFECTS QUERY PERFORMANCE
+            self.check_object_permissions(
+                self.request, obj
+            )  # This triggers has_object_permission
+            return obj
+        except Message.DoesNotExist:
+            raise NotFoundError(err_msg="Message not found.")
+
+    @extend_schema(
+        summary="Retrieve a specific message",
+        description="This endpoint allows an authenticated user to retrieve the details of a specific message by ID. If the message is unread, it will automatically be marked as read upon retrieval.",
+        tags=tags,
+        responses=VIEW_MESSAGE_RESPONSE_EXAMPLE,
+    )
+    def get(self, request, id):
+        message = self.get_object(id)
+        serializer = self.serializer_class(message)
+
+        # Mark the message as read if it's currently unread
+        if not message.is_read:
+            message.is_read = True
+            message.save()
+
+        return CustomResponse.success(
+            message="Message retrieved successfully.",
+            data=serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        summary="Delete a specific message",
+        description="This endpoint allows an authenticated user to delete a specific message they received. The message ID must be valid, and the message must belong to the authenticated user. Upon successful deletion, a confirmation message is returned.",
+        tags=tags,
+        responses=DELETE_MESSAGE_RESPONSE_EXAMPLE,
+    )
+    def delete(self, request, id):
+        message = self.get_object(id)
+        message.delete()
+        return Response(
+            status=status.HTTP_204_NO_CONTENT,
+        )
+
+
 # View for viewing a specific message
 class ViewMessage(APIView):
     permission_classes = (IsAuthenticated,)
@@ -146,7 +198,7 @@ class CreateMessage(APIView):
 
         # Prevent users from messaging themselves
         if sender and sender.id == recipient.id:
-            raise ValidationError("You cannot message yourself.")
+            raise PermissionDenied("You cannot message yourself.")
 
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)

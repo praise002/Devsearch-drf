@@ -1,6 +1,6 @@
 from rest_framework import permissions
 
-from apps.projects.models import Project
+# from apps.projects.models import Project
 
 
 class IsProjectOwner(permissions.BasePermission):

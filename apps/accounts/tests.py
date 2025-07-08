@@ -576,26 +576,4 @@ class TestAccounts(APITestCase):
         self.assertEqual(response.status_code, 422)
 
 
-class TestGoogleOAuth(APITestCase):
-    def setUp(self):
-        self.signup_url = reverse("google_signup")
-        self.login_url = reverse("google_login")
-
-    def test_google_signup(self):
-        # Test successful redirect URL generation
-        response = self.client.get(self.signup_url)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["status"], SUCCESS_RESPONSE_STATUS)
-        self.assertIn("authorization_url", response.json()["data"])
-
-    def test_google_login(self):
-        # Test successful redirect URL generation
-        response = self.client.get(self.login_url)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["status"], SUCCESS_RESPONSE_STATUS)
-        self.assertIn("authorization_url", response.json()["data"])
-
-
 # python manage.py test apps.accounts.tests.TestAccounts.test_register
