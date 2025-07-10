@@ -182,23 +182,33 @@ class CreateData:
             profile = user.profile
 
             # Update profile fields
-            profile.short_intro = profile_data["short_intro"]
-            profile.bio = profile_data["bio"]
-            profile.location = profile_data["location"]
+            for field in ["short_intro", "bio", "location"]:
+                setattr(profile, field, profile_data.get(field, ""))
+
+            # profile.short_intro = profile_data["short_intro"]
+            # profile.bio = profile_data["bio"]
+            # profile.location = profile_data["location"]
 
             # Update social links
             socials = profile_data.get("social", {})
-            profile.social_github = socials.get("github", "")
-            profile.social_stackoverflow = socials.get("stackoverflow", "")
-            profile.social_twitter = socials.get("twitter", "")
-            profile.social_linkedin = socials.get("linkedin", "")
-            profile.social_website = socials.get("website", "")
+            for field in ["github", "stackoverflow", "twitter", "linkedin", "website"]:
+                setattr(profile, f"social_{field}", socials.get(field, ""))
+
+            # profile.social_github = socials.get("github", "")
+            # profile.social_stackoverflow = socials.get("stackoverflow", "")
+            # profile.social_twitter = socials.get("twitter", "")
+            # profile.social_linkedin = socials.get("linkedin", "")
+            # profile.social_website = socials.get("website", "")
 
             # Update avatar
-            with open(image_path, "rb") as image_file:
-                file_storage = MediaCloudinaryStorage()
-                file_path = file_storage.save(f"{AVATAR_FOLDER}{file_name}", image_file)
-                profile.avatar = file_path
+            if not profile.avatar:
+                with open(image_path, "rb") as image_file:
+                    file_storage = MediaCloudinaryStorage()
+                    file_path = file_storage.save(
+                        f"{AVATAR_FOLDER}{file_name}", image_file
+                    )
+
+                    profile.avatar = file_path
 
             profiles_to_update.append(profile)
             all_skills_data.append((profile, profile_data.get("skills", [])))
@@ -224,18 +234,17 @@ class CreateData:
             )
 
         for profile, skills in all_skills_data:
-            profile.skills.all().delete()
-
-            Skill.objects.bulk_create(
-                [
-                    Skill(
-                        name=skill["name"],
-                        description=skill["description"],
-                        user=profile,
-                    )
-                    for skill in skills
-                ]
-            )
+            if not profile.skills:
+                Skill.objects.bulk_create(
+                    [
+                        Skill(
+                            name=skill["name"],
+                            description=skill["description"],
+                            user=profile,
+                        )
+                        for skill in skills
+                    ]
+                )
 
         logger.info(f"Updated {len(profiles_to_update)} profiles with skills")
 
