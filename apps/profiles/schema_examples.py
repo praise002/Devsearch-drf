@@ -28,7 +28,7 @@ PROFILE_EXAMPLE = {
     "social_twitter": "",
     "social_linkedin": "",
     "skills": [],
-    "image_url": AVATAR_URL,
+    "avatar_url": AVATAR_URL,
 }
 
 SKILL_EXAMPLE_1 = {
@@ -61,7 +61,7 @@ PROFILE_EXAMPLES = [
         "social_twitter": "",
         "social_linkedin": "",
         "skills": [],
-        "image_url": AVATAR_URL,
+        "avatar_url": AVATAR_URL,
     },
     {
         "user": {
@@ -79,7 +79,7 @@ PROFILE_EXAMPLES = [
         "social_twitter": "",
         "social_linkedin": "",
         "skills": [],
-        "image_url": AVATAR_URL,
+        "avatar_url": AVATAR_URL,
     },
 ]
 
@@ -179,7 +179,7 @@ IMAGE_UPDATE_RESPONSE_EXAMPLE = {
                     "status": SUCCESS_RESPONSE_STATUS,
                     "message": "Profile image updated successfully.",
                     "data": {
-                        "image_url": AVATAR_URL,
+                        "avatar_url": AVATAR_URL,
                     },
                 },
             ),

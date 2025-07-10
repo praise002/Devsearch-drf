@@ -1,0 +1,58 @@
+[
+{
+  "model": "projects.tag",
+  "pk": "090604e6-2f7e-46e3-be6e-73d1521a4697",
+  "fields": {
+    "created": "2025-06-29T17:51:59.904Z",
+    "name": "django"
+  }
+},
+{
+  "model": "projects.tag",
+  "pk": "0cf305fc-c570-41c6-b555-43fa517c12e9",
+  "fields": {
+    "created": "2025-07-08T16:39:44.053Z",
+    "name": "firebase"
+  }
+},
+{
+  "model": "projects.tag",
+  "pk": "9b57e617-3937-45c7-8acf-7fee0f44d7e3",
+  "fields": {
+    "created": "2025-07-03T20:51:06.066Z",
+    "name": "supabase"
+  }
+},
+{
+  "model": "projects.tag",
+  "pk": "9c8a7136-4340-440d-a568-de4b6e874063",
+  "fields": {
+    "created": "2025-07-01T20:43:22.321Z",
+    "name": "docker"
+  }
+},
+{
+  "model": "projects.tag",
+  "pk": "a1c5d62a-a224-4843-a36a-591a42868b53",
+  "fields": {
+    "created": "2025-07-08T16:40:01.039Z",
+    "name": "python"
+  }
+},
+{
+  "model": "projects.tag",
+  "pk": "a9cfe077-6691-446a-8908-2af7bba20634",
+  "fields": {
+    "created": "2025-07-03T20:53:04.059Z",
+    "name": "react"
+  }
+},
+{
+  "model": "projects.tag",
+  "pk": "e11e7086-f755-4380-9ecc-de6f7d0c526f",
+  "fields": {
+    "created": "2025-07-08T16:40:10.561Z",
+    "name": "tailwind"
+  }
+}
+]

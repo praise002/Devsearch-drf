@@ -7,6 +7,8 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from django.utils import timezone
 
+from apps.common.models import IsDeletedModel
+
 from .managers import CustomUserManager
 
 
@@ -14,7 +16,7 @@ def slugify_two_fields(self):
     return f"{self.first_name}-{self.last_name}"
 
 
-class User(AbstractBaseUser, PermissionsMixin):
+class User(AbstractBaseUser, IsDeletedModel, PermissionsMixin):
     id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
@@ -41,6 +43,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["username"]),
+        ]
+        permissions = [
+            ("can_toggle_user_status", "Can toggle user active status")
         ]
 
     @property

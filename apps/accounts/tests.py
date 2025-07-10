@@ -46,6 +46,7 @@ class TestAccounts(APITestCase):
     def setUp(self):
         self.new_user = TestUtil.new_user()
         self.verified_user = TestUtil.verified_user()
+        self.disabled_user = TestUtil.disabled_user()
 
     @patch("apps.accounts.emails.SendEmail.send_email")
     def test_register(self, mock_send_email):
@@ -75,6 +76,17 @@ class TestAccounts(APITestCase):
         self.assertEqual(response.status_code, 422)
 
     def test_login(self):
+        # Disabled account - 403
+        response = self.client.post(
+            self.login_url,
+            {
+                "email": self.disabled_user.email,
+                "password": "testpassword789#",
+            },
+        )
+
+        self.assertEqual(response.status_code, 403)
+        
         # Valid Login
         response = self.client.post(
             self.login_url,
@@ -118,6 +130,8 @@ class TestAccounts(APITestCase):
         )
 
         self.assertEqual(response.status_code, 403)
+        
+        
 
     @patch("apps.accounts.emails.SendEmail.send_email")
     def test_resend_verification_email(self, mock_send_email):

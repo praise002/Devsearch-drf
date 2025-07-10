@@ -20,7 +20,8 @@ class ProjectAdmin(admin.ModelAdmin):
     # Specify the order of fields
     fields = (
         'title',   
-        'slug',    
+        'slug',  
+        'featured_image',
         'owner', 
         'description',
         'source_link',

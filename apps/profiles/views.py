@@ -8,15 +8,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.errors import ErrorCode
 from apps.common.exceptions import NotFoundError
 from apps.common.pagination import CustomPagination, DefaultPagination
 from apps.common.responses import CustomResponse
-from apps.common.serializers import (
-    ErrorDataResponseSerializer,
-    ErrorResponseSerializer,
-    SuccessResponseSerializer,
-)
+from apps.common.serializers import SuccessResponseSerializer
 from apps.profiles.filters import ProfileFilter
 from apps.profiles.schema_examples import (
     IMAGE_UPDATE_RESPONSE_EXAMPLE,
@@ -32,7 +27,7 @@ from apps.profiles.schema_examples import (
 
 from .models import Profile, Skill
 from .serializers import (
-    ImageSerializer,
+    AvatarSerializer,
     ProfileSerializer,
     ProfileUpdateSerializer,
     SkillSerializer,
@@ -187,8 +182,8 @@ class ProfileListGenericView(ListAPIView):
         )
 
 
-class ImageUpdateView(APIView):
-    serializer_class = ImageSerializer
+class AvatarUpdateView(APIView):
+    serializer_class = AvatarSerializer
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -207,7 +202,7 @@ class ImageUpdateView(APIView):
         return CustomResponse.success(
             message="Profile image updated successfully.",
             data={
-                "image_url": profile.image_url,
+                "avatar_url": profile.avatar_url,
             },
             status_code=status.HTTP_200_OK,
         )
@@ -244,7 +239,9 @@ class SkillDetailUpdateDestroyView(APIView):  # detail, edit, delete
             skill = Skill.objects.get(id=id)
             # 3 - check ownership
             if skill.user != self.request.user.profile:
-                raise PermissionDenied("You don't have permission to access this skill.")
+                raise PermissionDenied(
+                    "You don't have permission to access this skill."
+                )
             return skill
         except Skill.DoesNotExist:
             # Only reaches here if skill doesn't exist AND user is authenticated

@@ -30,9 +30,7 @@ class Project(BaseModel):
     owner = models.ForeignKey(
         Profile, related_name="projects", on_delete=models.CASCADE
     )
-    featured_image = models.ImageField(
-        upload_to="featured_image/", null=True
-    )
+    featured_image = models.ImageField(upload_to="featured_image/", null=True, blank=True)
     description = models.TextField()
     source_link = models.CharField(max_length=200, blank=True)
     demo_link = models.CharField(max_length=200, blank=True)

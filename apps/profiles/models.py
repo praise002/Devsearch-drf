@@ -3,6 +3,7 @@ from django.db import models
 
 from apps.common.models import BaseModel
 
+AVATAR_FOLDER = "avatar/"
 
 class Skill(BaseModel):
     name = models.CharField(max_length=100)
@@ -24,9 +25,10 @@ class Profile(BaseModel):
     short_intro = models.CharField(max_length=200, blank=True)
     bio = models.TextField(blank=True)
     location = models.CharField(max_length=100, blank=True)
-    photo = models.ImageField(
-        upload_to="images/",
+    avatar = models.ImageField(
+        upload_to=AVATAR_FOLDER,
         null=True,
+        blank=True
     )
     updated = models.DateTimeField(auto_now=True)
 
@@ -47,9 +49,9 @@ class Profile(BaseModel):
         return f"{self.user.full_name}"
 
     @property
-    def image_url(self):
+    def avatar_url(self):
         try:
-            url = self.photo.url
+            url = self.avatar.url
         except:
             url = "https://res.cloudinary.com/dq0ow9lxw/image/upload/v1732236186/default-image_foxagq.jpg"
         return url

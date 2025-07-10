@@ -52,7 +52,7 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     skills = SkillSerializer(many=True, read_only=True)
-    image_url = serializers.SerializerMethodField(read_only=True)
+    avatar_url = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Profile
@@ -66,18 +66,18 @@ class ProfileSerializer(serializers.ModelSerializer):
             "social_twitter",
             "social_linkedin",
             "skills",
-            "image_url",
+            "avatar_url",
         ]
 
     @extend_schema_field(serializers.URLField)
-    def get_image_url(self, obj):
-        return obj.image_url
+    def get_avatar_url(self, obj):
+        return obj.avatar_url
 
 
-class ImageSerializer(serializers.ModelSerializer):
+class AvatarSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
         fields = [
-            "photo",
+            "avatar",
         ]

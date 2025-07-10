@@ -28,10 +28,22 @@ class TestUtil:
     def other_verified_user():
         user_dict = {
             "first_name": "Test",
-            "last_name": "Otherisgood*5%",
+            "last_name": "Otherisgood",
             "email": "testotheruser@example.com",
             "is_email_verified": True,
-            "password": "testpassword",
+            "password": "testpassword123@",
+        }
+        user = User.objects.create_user(**user_dict)
+        return user
+    
+    def disabled_user():
+        user_dict = {
+            "first_name": "Test",
+            "last_name": "Disabled",
+            "email": "testdisabled@example.com",
+            "is_email_verified": True,
+            "user_active": False,
+            "password": "testpassword789#",
         }
         user = User.objects.create_user(**user_dict)
         return user

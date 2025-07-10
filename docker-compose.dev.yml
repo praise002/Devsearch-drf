@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:17-alpine
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_HOST=db
+    env_file:
+      - .env
+    
+
+  web:
+    image: devsearch-api-dev-web:${IMAGE_TAG}
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    restart: always
+    volumes:
+      - static_volume:/app/staticfiles
+    ports:
+      - "8000:8000"
+    healthcheck:
+      # test: curl --fail http://localhost:8000 || exit 1
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/healthcheck"]
+      interval: 10s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    environment:
+      - POSTGRES_HOST=db
+    env_file:
+      - .env
+    depends_on:
+      - db
+    develop:
+      watch:
+        - action: rebuild
+          path: Dockerfile.dev
+        - action: rebuild 
+          path: requirements.txt
+        - action: rebuild 
+          path: docker-compose.dev-yml
+  
+volumes:
+  postgres_data: 
+  static_volume: 
+

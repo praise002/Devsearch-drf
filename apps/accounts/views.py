@@ -91,7 +91,7 @@ class LoginView(TokenObtainPairView):
 
         try:
             serializer.is_valid(raise_exception=True)
-            
+
             user = User.objects.get(email=request.data.get("email"))
 
             # Check if the user's email is verified
@@ -103,10 +103,16 @@ class LoginView(TokenObtainPairView):
                     err_code=ErrorCode.FORBIDDEN,
                 )
 
+            if not user.user_active:
+                return CustomResponse.error(
+                    message="Your account has been disabled. Please contact support for assistance.",
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    err_code=ErrorCode.FORBIDDEN,
+                )
+
         except TokenError as e:
             raise InvalidToken(e.args[0])
 
-        
         if settings.DEBUG:
             response = CustomResponse.success(
                 message="Login successful.",
