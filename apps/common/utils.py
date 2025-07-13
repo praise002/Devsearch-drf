@@ -1,5 +1,5 @@
 from apps.accounts.models import User
-from apps.profiles.models import Profile, Skill
+from apps.profiles.models import Profile, ProfileSkill, Skill
 from apps.projects.models import Project, Review, Tag
 
 
@@ -90,5 +90,9 @@ class TestUtil:
     def get_profile(user):
         return Profile.objects.get(user=user)
 
-    def add_skill(name, profile):
-        return Skill.objects.create(name=name, user=profile)
+    def create_skill(name):
+        return Skill.objects.create(name=name)
+    
+    def add_skill(name, desc, profile):
+        skill = TestUtil.create_skill(name)
+        return ProfileSkill.objects.create(profile=profile, skill=skill, description=desc)

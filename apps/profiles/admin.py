@@ -1,8 +1,13 @@
 from django.contrib import admin
-from .models import Skill, Profile
+from .models import ProfileSkill, Skill, Profile
 
 class SkillAdmin(admin.ModelAdmin):
-    search_fields = ('name', 'user__user__username')
+    search_fields = ('name',)
+    readonly_fields = ('id',)
+    list_per_page = 10
+    
+class ProfileSkillAdmin(admin.ModelAdmin):
+    search_fields = ('skill__name',)
     readonly_fields = ('id',)
     list_per_page = 10
 
@@ -17,4 +22,5 @@ class ProfileAdmin(admin.ModelAdmin):
     
 admin.site.register(Skill, SkillAdmin)
 admin.site.register(Profile, ProfileAdmin)
+admin.site.register(ProfileSkill, ProfileSkillAdmin)
 

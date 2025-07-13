@@ -9,8 +9,14 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
 from apps.accounts.models import User
-from apps.common.management.commands.data import PROFILES_DATA, USERS_DATA
+from apps.common.management.commands.data import (
+    PROFILES_DATA,
+    PROJECTS_DATA,
+    REVIEWS_DATA,
+    USERS_DATA,
+)
 from apps.profiles.models import AVATAR_FOLDER, Profile, Skill
+from apps.projects.models import Project, Review, Tag
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +28,14 @@ test_images_directory = os.path.join(CURRENT_DIR, "images")
 class CreateData:
     def __init__(self):
         with transaction.atomic():
-            # self.create_superuser()
-            # self.create_user_groups()
+            self.create_superuser()
+            self.create_user_groups()
             self.create_users()
 
         with transaction.atomic():
             self.update_profiles()
+            self.create_projects()
+            self.create_reviews()
 
     def get_image(self, images_list, substring):
         return [s for s in images_list if s.startswith(substring)]
@@ -248,11 +256,166 @@ class CreateData:
 
         logger.info(f"Updated {len(profiles_to_update)} profiles with skills")
 
-    def create_projects():
-        pass
+    def create_projects(self):
+        """Creates projects and links them to profiles with proper tags."""
+        profiles = list(Profile.objects.filter(user__is_staff=False).all())
+
+        if not profiles:
+            logger.error("No profiles exist! Create profiles first.")
+            return
+
+        for index, project_data in enumerate(PROJECTS_DATA):
+            profile = profiles[index % len(profiles)]
+            print(profile)
+            project = Project.objects.create(
+                title=project_data["title"],
+                owner=profile,
+                description=project_data["description"],
+                source_link=project_data["source_link"],
+                demo_link=project_data["demo_link"],
+            )
+
+            for tag_name in project_data["tags"]:
+                tag, _ = Tag.objects.get_or_create(name=tag_name)
+                project.tags.add(tag)
+
+            logger.info(f"Created project: {project.title}")
+
+        logger.info(f"Successfully created {len(PROJECTS_DATA)} projects")
+
+    def create_reviews(self):
+        projects = list(Project.objects.all())
+        profiles = list(Profile.objects.filter(user__is_staff=False).all())
+        has_reviewed = []
+        print(has_reviewed)
+        created_count = 0
+
+        if not projects or not profiles or len(profiles) < 2:
+            logger.error("Need at least 2 profiles and some projects to create reviews")
+            return
+
+        for i, review_data in enumerate(REVIEWS_DATA):
+            try:
+                project = projects[i % len(projects)]
+                print(project)
+                available_reviewers = [p for p in profiles if p != project.owner]
+                print(available_reviewers)
+
+                if not available_reviewers:
+                    logger.warning(
+                        f"No available reviewers for project {project.title}"
+                    )
+                    continue
+
+                review_created = False
+
+                # Phase 1: Try reviewers who haven't reviewed ANY project yet
+                unused_reviewers = [
+                    r for r in available_reviewers if r not in has_reviewed
+                ]
+                if unused_reviewers:
+                    for reviewer in unused_reviewers:
+                        if not Review.objects.filter(
+                            project=project, reviewer=reviewer
+                        ).exists():
+                            Review.objects.create(
+                                project=project,
+                                reviewer=reviewer,
+                                content=review_data["content"],
+                                value=review_data["value"],
+                            )
+                            created_count += 1
+                            review_created = True
+                            has_reviewed.append(reviewer)
+                            logger.info(
+                                f"Created review for project '{project.title}' by {reviewer.user.email} (first-time reviewer)"
+                            )
+                            break
+                        
+                # Phase 2: If no unused reviewers available, allow rotation
+                if not review_created:
+                    logger.debug(f"All reviewers have reviewed at least one project. Allowing rotation for project {project.title}")
+                    
+                    for reviewer in available_reviewers:
+                        if not Review.objects.filter(project=project, reviewer=reviewer).exists():
+                            Review.objects.create(
+                                project=project,
+                                reviewer=reviewer,
+                                content=review_data["content"],
+                                value=review_data["value"],
+                            )
+                            created_count += 1
+                            review_created = True
+                            has_reviewed.append(reviewer)
+                            project.review_percentage
+                            logger.info(
+                                f"Created review for project '{project.title}' by {reviewer.user.email}"
+                            )
+                            break
+
+                if not review_created:
+                    logger.debug(
+                        f"All potential reviewers have already reviewed project {project.title}"
+                    )
+
+            except Exception as e:
+                logger.error(f"Error creating review: {str(e)}")
+
+            logger.info(f"Successfully created {created_count} reviews")
+
+    def create_reviews_2(self):
+        """Creates reviews for projects."""
+        projects = list(Project.objects.all())
+        profiles = list(Profile.objects.filter(user__is_staff=False).all())
+        print(profiles)
+        if not projects or not profiles or len(profiles) < 2:
+            logger.error("Need at least 2 profiles and some projects to create reviews")
+            return
+
+        created_count = 0
+
+        for i, review_data in enumerate(REVIEWS_DATA):
+            try:
+                project = projects[i % len(projects)]
+                print(project)
+                available_reviewers = [p for p in profiles if p != project.owner]
+                print(available_reviewers)
+
+                if not available_reviewers:
+                    logger.warning(
+                        f"No available reviewers for project {project.title}"
+                    )
+                    continue
+
+                # Try each available reviewer until we find one without existing review
+                review_created = False
+                for reviewer in available_reviewers:
+                    if not Review.objects.filter(
+                        project=project, reviewer=reviewer
+                    ).exists():
+                        Review.objects.create(
+                            project=project,
+                            reviewer=reviewer,
+                            content=review_data["content"],
+                            value=review_data["value"],
+                        )
+                        created_count += 1
+                        review_created = True
+                        project.review_percentage
+                        logger.info(
+                            f"Created review for project '{project.title}' by {reviewer.user.email}"
+                        )
+                        break
+
+                if not review_created:
+                    logger.debug(
+                        f"All potential reviewers have already reviewed project {project.title}"
+                    )
+
+            except Exception as e:
+                logger.error(f"Error creating review: {str(e)}")
+
+        logger.info(f"Successfully created {created_count} reviews")
 
     def create_messages():
-        pass
-
-    def create_reviews():
         pass

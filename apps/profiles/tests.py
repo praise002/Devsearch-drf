@@ -98,10 +98,18 @@ class TestProfiles(APITestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_skill_detail_get(self):
-        skill = TestUtil.add_skill("Django", self.profile1)
+        skill = TestUtil.add_skill(
+            "Django",
+            "Expert in Python development with Django and Flask frameworks",
+            self.profile1,
+        )
         skill_id = skill.id
 
-        other_skill = TestUtil.add_skill("FASTAPI", self.profile2)
+        other_skill = TestUtil.add_skill(
+            "FASTAPI",
+            "Expert in AI Engineering with FASTAPI",
+            self.profile2,
+        )
         other_skill_id = other_skill.id
 
         # Unauthenticated User
@@ -133,19 +141,26 @@ class TestProfiles(APITestCase):
 
         self.assertEqual(response.status_code, 404)
 
-        # Update someone else skill error - 404
+        # 403
         response = self.client.get(
-            self.skill_detail_url.replace("<uuid:id>", str(other_skill_id)),
-            {"name": "Django Updated"},
+            self.skill_detail_url.replace("<uuid:id>", str(other_skill_id))
         )
 
         self.assertEqual(response.status_code, 403)
 
     def test_skill_patch(self):
-        skill = TestUtil.add_skill("Django", self.profile1)
+        skill = TestUtil.add_skill(
+            "Django",
+            "Expert in Python development with Django and Flask frameworks",
+            self.profile1,
+        )
         skill_id = skill.id
 
-        other_skill = TestUtil.add_skill("FASTAPI", self.profile2)
+        other_skill = TestUtil.add_skill(
+            "FASTAPI",
+            "Expert in Python development with FASTAPI",
+            self.profile2,
+        )
         other_skill_id = other_skill.id
 
         # Authenticated User
@@ -167,7 +182,7 @@ class TestProfiles(APITestCase):
         )
         self.assertEqual(response.status_code, 404)
 
-        # Get someone else skill error - 403
+        #  403
         response = self.client.patch(
             self.skill_detail_url.replace("<uuid:id>", str(other_skill_id)),
             {"name": "Django Updated"},
@@ -183,10 +198,18 @@ class TestProfiles(APITestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_skill_delete(self):
-        skill = TestUtil.add_skill("Django", self.profile1)
+        skill = TestUtil.add_skill(
+            "Django",
+            "Expert in Python development with Django framework",
+            self.profile1,
+        )
         skill_id = skill.id
 
-        other_skill = TestUtil.add_skill("FASTAPI", self.profile2)
+        other_skill = TestUtil.add_skill(
+            "FASTAPI",
+            "Expert in Python development with FASTAPI",
+            self.profile2,
+        )
         other_skill_id = other_skill.id
 
         # Authenticated User
@@ -206,15 +229,13 @@ class TestProfiles(APITestCase):
 
         # Delete someone else skill error - 403
         response = self.client.delete(
-            self.skill_detail_url.replace("<uuid:id>", str(other_skill_id)),
-            {"name": "Django Updated"},
+            self.skill_detail_url.replace("<uuid:id>", str(other_skill_id))
         )
         self.assertEqual(response.status_code, 403)
 
         # Unauthenticated User
         self.client.force_authenticate(user=None)
         response = self.client.delete(
-            self.skill_detail_url.replace("<uuid:id>", str(skill_id)),
-            {"name": "Django Updated"},
+            self.skill_detail_url.replace("<uuid:id>", str(skill_id))
         )
         self.assertEqual(response.status_code, 401)

@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from .models import Profile, Skill
+from .models import Profile, ProfileSkill, Skill
 
 User = get_user_model()
 
@@ -10,8 +10,15 @@ User = get_user_model()
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Skill
-        fields = ["id", "name", "description"]
+        fields = ["id", "name"]
 
+class ProfileSkillSerializer(serializers.ModelSerializer):
+    skill = SkillSerializer(read_only=True)
+    skill_id = serializers.UUIDField(write_only=True)
+    
+    class Meta:
+        model = ProfileSkill
+        fields = ["id", "skill", "skill_id", "description"]
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:

@@ -583,6 +583,7 @@ class ReviewListCreateView(APIView):
         # Save the review and associate it with the project
         serializer.save(reviewer=request.user.profile, project=project)
 
+        # TODO: CHECK THE PERFORMANCE AND MAYBE MOVE TO LIST LATER
         project.review_percentage
 
         return CustomResponse.success(

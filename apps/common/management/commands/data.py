@@ -445,33 +445,23 @@ PROJECTS_DATA = [
 ]
 
 REVIEWS_DATA = [
-    {
-        "project": 0,  # Index of the project in PROJECTS_DATA
-        "reviewer": 1,  # Index of the reviewer profile
+    {  
         "value": "up",
         "content": "This is an impressive e-commerce implementation! The code is well-organized and the documentation is thorough. The React components could benefit from TypeScript integration though.",
     },
-    {
-        "project": 1,
-        "reviewer": 0,
+    { 
         "value": "up",
         "content": "Excellent design system! I've already implemented several components in my projects. The attention to accessibility is particularly commendable.",
     },
     {
-        "project": 4,
-        "reviewer": 9,
         "value": "up",
         "content": "The predictive model shows strong results on the test data. Consider adding more features from the time domain to potentially improve accuracy further.",
     },
-    {
-        "project": 2,
-        "reviewer": 5,
+    { 
         "value": "down",
         "content": "The Terraform templates are useful but lack documentation for some of the more complex modules. Also needs better examples for common use cases.",
     },
     {
-        "project": 3,
-        "reviewer": 7,
         "value": "up",
         "content": "The fitness app has great potential! The UI is intuitive and the social features are well-implemented. Would love to see more analytics for users to track progress over time.",
     },
