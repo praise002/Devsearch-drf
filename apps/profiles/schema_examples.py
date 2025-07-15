@@ -10,7 +10,11 @@ from apps.common.schema_examples import (
     UUID_EXAMPLE,
 )
 from apps.common.serializers import ErrorDataResponseSerializer, ErrorResponseSerializer
-from apps.profiles.serializers import ProfileSerializer, SkillSerializer
+from apps.profiles.serializers import (
+    ProfileSerializer,
+    ProfileSkillSerializer,
+    SkillSerializer,
+)
 
 PROFILE_EXAMPLE = {
     "user": {
@@ -43,6 +47,18 @@ SKILL_EXAMPLE_2 = {
     "description": "Lorem ipsum",
 }
 
+SKILLS_EXAMPLE = (
+    [
+        {
+            "id": "b8dab62e-3fc4-4f0d-bd92-ce5279396b7a",
+            "name": "firebase",
+        },
+        {
+            "id": "0d249872-b8ac-4871-a4af-edfbf5884bc2",
+            "name": "django",
+        },
+    ],
+)
 
 PROFILE_EXAMPLES = [
     {
@@ -192,10 +208,28 @@ IMAGE_UPDATE_RESPONSE_EXAMPLE = {
     ),
 }
 
+SKILL_LIST_RESPONSE_EXAMPLE = {
+    200: OpenApiResponse(
+        description="Skills Fetched",
+        response=SkillSerializer,
+        examples=[
+            OpenApiExample(
+                name="Success Response",
+                value={
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Skills retrieved successfully.",
+                    "data": SKILLS_EXAMPLE,
+                },
+            ),
+        ],
+    ),
+    401: UNAUTHORIZED_USER_RESPONSE,
+}
+
 SKILL_CREATE_RESPONSE_EXAMPLE = {
     201: OpenApiResponse(
         description="Skill Create Successful",
-        response=SkillSerializer,
+        response=ProfileSkillSerializer,
         examples=[
             OpenApiExample(
                 name="Success Response with empty description",
@@ -222,10 +256,11 @@ SKILL_CREATE_RESPONSE_EXAMPLE = {
     ),
 }
 
+# TODO: REMOVE LATER IF NOT USED
 SKILL_GET_RESPONSE_EXAMPLE = {
     200: OpenApiResponse(
         description="Skill Retrieved",
-        response=SkillSerializer,
+        response=ProfileSkillSerializer,
         examples=[
             OpenApiExample(
                 name="Success Response",
@@ -271,7 +306,7 @@ SKILL_GET_RESPONSE_EXAMPLE = {
 SKILL_UPDATE_RESPONSE_EXAMPLE = {
     200: OpenApiResponse(
         description="Skill Update Successfull",
-        response=SkillSerializer,
+        response=ProfileSkillSerializer,
         examples=[
             OpenApiExample(
                 name="Success Response",

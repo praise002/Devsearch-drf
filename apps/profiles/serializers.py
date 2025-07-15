@@ -12,13 +12,40 @@ class SkillSerializer(serializers.ModelSerializer):
         model = Skill
         fields = ["id", "name"]
 
+
 class ProfileSkillSerializer(serializers.ModelSerializer):
-    skill = SkillSerializer(read_only=True)
-    skill_id = serializers.UUIDField(write_only=True)
-    
+    id = serializers.UUIDField(source="skill.id", read_only=True)
+    name = serializers.CharField(source="skill.name", read_only=True)
+
     class Meta:
         model = ProfileSkill
-        fields = ["id", "skill", "skill_id", "description"]
+        fields = ["id", "name", "description"]
+
+
+class ProfileSkillCreateSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="skill.name")
+
+    class Meta:
+        model = ProfileSkill
+        fields = ["name"]
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        skill_name = validated_data.pop("skill")["name"].lower()
+
+        skill, _ = Skill.objects.get_or_create(name=skill_name)
+
+        profile_skill, created = ProfileSkill.objects.get_or_create(
+            profile=request.user.profile, skill=skill
+        )
+
+        if not created:
+            raise serializers.ValidationError(
+                {"name": f"You already have '{skill.name}' skill in your profile."}
+            )
+
+        return profile_skill
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -43,22 +70,22 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
             "social_twitter",
             "social_linkedin",
         ]
-        
+
     def update(self, instance, validated_data):
-        user_data = validated_data.pop('user', {})
+        user_data = validated_data.pop("user", {})
         # update user fields
         if user_data:
             user = instance.user
             for attr, value in user_data.items():
                 setattr(user, attr, value)
             user.save()
-            
+
         return super().update(instance, validated_data)
 
 
 class ProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-    skills = SkillSerializer(many=True, read_only=True)
+    skills = serializers.SerializerMethodField()
     avatar_url = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -75,6 +102,11 @@ class ProfileSerializer(serializers.ModelSerializer):
             "skills",
             "avatar_url",
         ]
+
+    @extend_schema_field(ProfileSkillSerializer(many=True))
+    def get_skills(self, obj):
+        profile_skills = obj.profileskill_set.all().select_related("skill")
+        return ProfileSkillSerializer(profile_skills, many=True).data
 
     @extend_schema_field(serializers.URLField)
     def get_avatar_url(self, obj):

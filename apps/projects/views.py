@@ -36,6 +36,7 @@ from .serializers import (
     FeaturedImageSerializer,
     ProjectCreateSerializer,
     ProjectSerializer,
+    ProjectUpdateSerializer,
     ReviewSerializer,
     TagCreateSerializer,
     TagSerializer,
@@ -196,15 +197,11 @@ class ProjectRetrieveUpdateDestroyView(APIView):
         try:
             obj = Project.objects.prefetch_related("tags").get(slug=slug)
             # TODO: MIGHT CHANGE LATER IF IT AFFECTS QUERY PERFORMANCE
-            self.check_object_permissions(self.request, obj) # This triggers has_object_permission
+            if self.request.method in ["PATCH", "PUT", "DELETE"]:
+                self.check_object_permissions(
+                    self.request, obj
+                )  # This triggers has_object_permission
             return obj
-        except Project.DoesNotExist:
-            raise NotFoundError(err_msg="Project not found.")
-        
-    def get_project(self, slug):
-        try:
-            project = Project.objects.prefetch_related("tags").get(slug=slug)
-            return project
         except Project.DoesNotExist:
             raise NotFoundError(err_msg="Project not found.")
 
@@ -217,8 +214,10 @@ class ProjectRetrieveUpdateDestroyView(APIView):
         """
         Helper method to select serializer class based on request method.
         """
-        if request and request.method != "GET":
+        if request and request.method == "POST":
             return ProjectCreateSerializer
+        elif request and request.method == "PUT" or request.method == "PATCH":
+            return ProjectUpdateSerializer
         return ProjectSerializer
 
     def get_serializer(self, *args, **kwargs):
@@ -237,7 +236,7 @@ class ProjectRetrieveUpdateDestroyView(APIView):
         responses=PROJECT_DETAIL_RESPONSE_EXAMPLE,
     )
     def get(self, request, slug):
-        project = self.get_project(slug)
+        project = self.get_object(slug)
 
         serializer = self.get_serializer(project)
         return CustomResponse.success(
@@ -321,12 +320,14 @@ class RelatedProjectsView(APIView):
 class FeaturedImageUpdateView(APIView):
     serializer_class = FeaturedImageSerializer
     permission_classes = [IsAuthenticated, IsProjectOwner]
-    
+
     def get_object(self, slug):
         try:
             obj = Project.objects.prefetch_related("tags").get(slug=slug)
             # TODO: MIGHT CHANGE LATER IF IT AFFECTS QUERY PERFORMANCE
-            self.check_object_permissions(self.request, obj) # This triggers has_object_permission
+            self.check_object_permissions(
+                self.request, obj
+            )  # This triggers has_object_permission
             return obj
         except Project.DoesNotExist:
             raise NotFoundError(err_msg="Project not found.")
@@ -415,7 +416,9 @@ class ProjectTagAddView(APIView):
         try:
             obj = Project.objects.prefetch_related("tags").get(slug=slug)
             # TODO: MIGHT CHANGE LATER IF IT AFFECTS QUERY PERFORMANCE
-            self.check_object_permissions(self.request, obj) # This triggers has_object_permission
+            self.check_object_permissions(
+                self.request, obj
+            )  # This triggers has_object_permission
             return obj
         except Project.DoesNotExist:
             raise NotFoundError(err_msg="Project not found.")
@@ -480,7 +483,9 @@ class TagRemoveView(APIView):
         try:
             obj = Project.objects.prefetch_related("tags").get(slug=slug)
             # TODO: MIGHT CHANGE LATER IF IT AFFECTS QUERY PERFORMANCE
-            self.check_object_permissions(self.request, obj) # This triggers has_object_permission
+            self.check_object_permissions(
+                self.request, obj
+            )  # This triggers has_object_permission
             return obj
         except Project.DoesNotExist:
             raise NotFoundError(err_msg="Project not found.")

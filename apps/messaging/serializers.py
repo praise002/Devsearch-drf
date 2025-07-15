@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.profiles.models import Profile
+
 from .models import Message
 
 

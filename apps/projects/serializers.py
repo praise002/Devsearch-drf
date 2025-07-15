@@ -10,18 +10,16 @@ class TagCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = ["name"]
-        extra_kwargs = {
-            'name': {'validators': []}  # Remove default unique validator
-        }
-        
-    def validate_name(self, value):
-        if not value.strip().lower():
-            raise serializers.ValidationError("Tag name is required.")
-        return value.strip().lower()
+        extra_kwargs = {"name": {"validators": []}}  # Remove default unique validator
+
+    # def validate_name(self, value):
+    #     if not value.strip().lower():
+    #         raise serializers.ValidationError("Tag name is required.")
+    #     return value.strip().lower()
 
     def create(self, validated_data):
         # The name is already lowercase from the validate_name
-        tag, created = Tag.objects.get_or_create(name=validated_data["name"])
+        tag, created = Tag.objects.get_or_create(name=validated_data["name"].lower())
         return tag, created
 
 
@@ -29,8 +27,6 @@ class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = ["id", "name"]
-
-    
 
 
 class ProjectCreateSerializer(serializers.ModelSerializer):
@@ -55,6 +51,17 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
         # Create the project and associate it with the user
         project = Project.objects.create(owner=user, **validated_data)
         return project
+
+
+class ProjectUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = [
+            "title",
+            "description",
+            "source_link",
+            "demo_link",
+        ]
 
 
 class FeaturedImageSerializer(serializers.ModelSerializer):

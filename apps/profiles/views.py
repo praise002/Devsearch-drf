@@ -3,7 +3,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import SearchFilter
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, ListCreateAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -21,14 +21,17 @@ from apps.profiles.schema_examples import (
     SKILL_CREATE_RESPONSE_EXAMPLE,
     SKILL_DELETE_RESPONSE_EXAMPLE,
     SKILL_GET_RESPONSE_EXAMPLE,
+    SKILL_LIST_RESPONSE_EXAMPLE,
     SKILL_UPDATE_RESPONSE_EXAMPLE,
     build_avatar_request_schema,
 )
 
-from .models import Profile, Skill
+from .models import Profile, ProfileSkill, Skill
 from .serializers import (
     AvatarSerializer,
     ProfileSerializer,
+    ProfileSkillCreateSerializer,
+    ProfileSkillSerializer,
     ProfileUpdateSerializer,
     SkillSerializer,
 )
@@ -208,9 +211,65 @@ class AvatarUpdateView(APIView):
         )
 
 
+class SkillListCreateGenericView(ListCreateAPIView):
+    queryset = Skill.objects.all()
+    permission_classes = (IsAuthenticated,)
+    pagination_class = DefaultPagination
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return ProfileSkillCreateSerializer
+        return SkillSerializer
+
+    @extend_schema(
+        summary="Retrieve a list of skills",
+        description="This endpoint allows authenticated users to view a list of all skills.",
+        tags=tags,
+        responses=SKILL_LIST_RESPONSE_EXAMPLE,
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return CustomResponse.success(
+            message="Skills retrieved successfully.",
+            data=serializer.data,
+            status_code=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        summary="Add a new skill to your profile",
+        description="This endpoint allows authenticated users to add a new skill to their profile.",
+        tags=tags,
+        responses=SKILL_CREATE_RESPONSE_EXAMPLE,
+    )
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        profile_skill = serializer.save()
+        profile_serializer = ProfileSkillSerializer(profile_skill)
+
+        return CustomResponse.success(
+            message="Skill added successfully.",
+            data=profile_serializer.data,
+            status_code=status.HTTP_201_CREATED,
+        )
+
+
 class SkillCreateView(APIView):
     permission_classes = (IsAuthenticated,)
-    serializer_class = SkillSerializer
+    serializer_class = ProfileSkillSerializer
 
     @extend_schema(
         summary="Add a new skill to your profile",
@@ -219,7 +278,9 @@ class SkillCreateView(APIView):
         responses=SKILL_CREATE_RESPONSE_EXAMPLE,
     )
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save(user=request.user.profile)
         return CustomResponse.success(
@@ -229,38 +290,25 @@ class SkillCreateView(APIView):
         )
 
 
-class SkillDetailUpdateDestroyView(APIView):  # detail, edit, delete
+class SkillUpdateDestroyView(APIView):  # detail, edit, delete
     permission_classes = (IsAuthenticated,)  # 1 - check auth
-    serializer_class = SkillSerializer
+    serializer_class = ProfileSkillSerializer
 
     def get_object(self, id):
         try:
             # 2 - check existence
-            skill = Skill.objects.get(id=id)
+            profile_skill = ProfileSkill.objects.select_related("skill").get(
+                skill__id=id
+            )
             # 3 - check ownership
-            if skill.user != self.request.user.profile:
+            if profile_skill.profile != self.request.user.profile:
                 raise PermissionDenied(
                     "You don't have permission to access this skill."
                 )
-            return skill
-        except Skill.DoesNotExist:
+            return profile_skill
+        except ProfileSkill.DoesNotExist:
             # Only reaches here if skill doesn't exist AND user is authenticated
             raise NotFoundError(err_msg="Skill not found.")
-
-    @extend_schema(
-        summary="View a specific skill",
-        description="This endpoint allows authenticated users to retrieve the details of a specific skill. Users must be logged in to access this functionality, as it is restricted to authenticated users only.",
-        tags=tags,
-        responses=SKILL_GET_RESPONSE_EXAMPLE,
-    )
-    def get(self, request, id):
-        skill = self.get_object(id)
-        serializer = self.serializer_class(skill)
-        return CustomResponse.success(
-            message="Skill retrieved successfully.",
-            data=serializer.data,
-            status_code=status.HTTP_200_OK,
-        )
 
     @extend_schema(
         summary="Update a specific skill",
@@ -269,8 +317,8 @@ class SkillDetailUpdateDestroyView(APIView):  # detail, edit, delete
         responses=SKILL_UPDATE_RESPONSE_EXAMPLE,
     )
     def patch(self, request, id):
-        skill = self.get_object(id)
-        serializer = self.serializer_class(skill, data=request.data, partial=True)
+        profile_skill = self.get_object(id)
+        serializer = self.serializer_class(profile_skill, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return CustomResponse.success(
@@ -286,6 +334,6 @@ class SkillDetailUpdateDestroyView(APIView):  # detail, edit, delete
         responses=SKILL_DELETE_RESPONSE_EXAMPLE,
     )
     def delete(self, request, id):
-        skill = self.get_object(id)
-        skill.delete()
+        profile_skill = self.get_object(id)
+        profile_skill.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
