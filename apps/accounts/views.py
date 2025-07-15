@@ -164,7 +164,7 @@ class ResendVerificationEmailView(APIView):
         except User.DoesNotExist:
             return CustomResponse.error(
                 message="No account is associated with this email.",
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 err_code=ErrorCode.BAD_REQUEST,
             )
 
@@ -209,7 +209,7 @@ class VerifyEmailView(APIView):
         except User.DoesNotExist:
             return CustomResponse.error(
                 message="No account is associated with this email.",
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 err_code=ErrorCode.BAD_REQUEST,
             )
 
@@ -219,7 +219,7 @@ class VerifyEmailView(APIView):
         except Otp.DoesNotExist:
             return CustomResponse.error(
                 message="Invalid OTP provided.",
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 err_code=ErrorCode.BAD_REQUEST,
             )
 
@@ -356,7 +356,7 @@ class PasswordResetRequestView(APIView):
         except User.DoesNotExist:
             return CustomResponse.error(
                 message="User with this email does not exist.",
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 err_code=ErrorCode.BAD_REQUEST,
             )
 
@@ -394,7 +394,7 @@ class VerifyOtpView(APIView):
         except User.DoesNotExist:
             return CustomResponse.error(
                 message="No account is associated with this email.",
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 err_code=ErrorCode.BAD_REQUEST,
             )
 
@@ -404,7 +404,7 @@ class VerifyOtpView(APIView):
         except Otp.DoesNotExist:
             return CustomResponse.error(
                 message="The OTP could not be found. Please enter a valid OTP or request a new one.",
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 err_code=ErrorCode.BAD_REQUEST,
             )
 
@@ -448,7 +448,7 @@ class PasswordResetDoneView(APIView):
         except User.DoesNotExist:
             return CustomResponse.error(
                 message="No account is associated with this email.",
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 err_code=ErrorCode.BAD_REQUEST,
             )
 
