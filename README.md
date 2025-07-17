@@ -196,4 +196,4 @@ If you have any questions or need help, please open an issue on GitHub.
 ---
 
 **Built with ❤️ by Praise**
-
+base64 .env > .env.base64
