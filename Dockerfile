@@ -2,6 +2,12 @@
 # Base image
 FROM python:3.12-slim as builder
 
+# Create a virtual environment
+RUN python -m venv /opt/venv
+
+# Set the virtual environment as the current location
+ENV PATH=/opt/venv/bin:$PATH
+
 # Set the working directory in the container
 WORKDIR /app
 
@@ -46,15 +52,10 @@ RUN pip install --no-cache-dir /wheels/* && \
     rm -rf /wheels
 
 # Copy source code
-COPY . .
-
-# Create logs directory and set permissions
-RUN mkdir -p /app/logs && \
-    touch /app/logs/devsearch.log &&  \
-    chmod -R 777 /app/logs/devsearch.log 
+COPY . . 
 
 # Make scripts executable
-RUN chmod +x entrypoint.dev wait-for-it.sh
-    
-# Set the entrypoint
-ENTRYPOINT ["./entrypoint.dev"]
+RUN chmod +x ./deployment/docker-run && \
+    chmod +x ./deployment/celery
+
+CMD ["./deployment/docker-run"]

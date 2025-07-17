@@ -3,10 +3,6 @@
 # Stop the script immediately if any command fails
 set -e
 
-# Wait for database to be ready
-./wait-for-it.sh db:5432 -- echo "PostgreSQL is up!"
-
-# Apply migrations
 echo "Running migrations..."
 python manage.py migrate --noinput
 
@@ -17,8 +13,7 @@ python manage.py initd
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
-exec gunicorn --bind 0.0.0.0:8000 devsearch-api.wsgi:application
+RUNTIME_PORT=${PORT:-8080}
+RUNTIME_HOST=${HOST:-0.0.0.0}
 
-# Execute the command passed to the script
-echo "Executing: $@"
-exec "$@"
+gunicorn devsearch.wsgi:application --bind $RUNTIME_HOST:$RUNTIME_PORT

@@ -541,6 +541,9 @@ class ReviewListCreateView(APIView):
     )
     def get(self, request, slug):
         project = self.get_project(slug)
+        
+        # Call this only when project is retrieved 
+        project.review_percentage
 
         # Retrieve all reviews for the specified project
         reviews = Review.objects.filter(project=project)
@@ -587,9 +590,6 @@ class ReviewListCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         # Save the review and associate it with the project
         serializer.save(reviewer=request.user.profile, project=project)
-
-        # TODO: CHECK THE PERFORMANCE AND MAYBE MOVE TO LIST LATER
-        project.review_percentage
 
         return CustomResponse.success(
             message="Review added successfully.",

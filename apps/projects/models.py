@@ -1,6 +1,6 @@
 from autoslug import AutoSlugField
-from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Count, Q
 
 from apps.common.models import BaseModel
 from apps.profiles.models import Profile
@@ -63,21 +63,37 @@ class Project(BaseModel):
         queryset = self.reviews.all().values_list("reviewer__id", flat=True)
         return queryset
 
+    # @property
+    # def review_percentage(self) -> int:
+    #     """
+    #     Calculate the positive feedback percentage based on votes.
+    #     """
+    #     reviews = self.reviews.all()
+    #     total_votes = reviews.count()
+
+    #     if total_votes > 0:
+    #         up_votes = reviews.filter(value="up").count()
+    #         ratio = (up_votes / total_votes) * 100
+    #         self.vote_total = total_votes
+    #         self.vote_ratio = ratio
+
+    #         self.save()
+
     @property
     def review_percentage(self) -> int:
-        """
-        Calculate the positive feedback percentage based on votes.
-        """
-        reviews = self.reviews.all()
-        total_votes = reviews.count()
+        up_votes = self.reviews.aggregate(
+            total=Count("id"), up=Count("id", filter=Q(value="up"))
+        )
+
+        total_votes = up_votes["total"]
+        up_votes = up_votes["up"]
 
         if total_votes > 0:
-            up_votes = reviews.filter(value="up").count()
             ratio = (up_votes / total_votes) * 100
             self.vote_total = total_votes
             self.vote_ratio = ratio
 
-            self.save()
+            self.save(update_fields=["vote_total", "vote_ratio"])
 
 
 class Review(BaseModel):

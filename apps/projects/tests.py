@@ -258,18 +258,19 @@ class TestProjects(APITestCase):
         )
         self.assertEqual(response.status_code, 201)
 
+        # Test that the tag is correctly associated with the project.
+        response = self.client.get(
+            self.tag_list_url.replace("<slug:slug>", self.project1.slug)
+        )
+        print(response.json())
+
+        self.assertIn("new tag", response.data["data"]["results"][1].get("name"))
+
         # Test that an error is returned when the tag name is missing or invalid.
         response = self.client.post(
             self.tag_add_url.replace("<slug:slug>", self.project1.slug), data={}
         )
         self.assertEqual(response.status_code, 422)
-
-        # Test that the tag is correctly associated with the project.
-        response = self.client.get(
-            self.tag_list_url.replace("<slug:slug>", self.project1.slug)
-        )
-
-        self.assertIn("new tag", response.data["data"]["results"][0].get("name"))
 
         # Test 403 - adding tag to someone else project
         response = self.client.post(

@@ -31,7 +31,7 @@ class TestUtil:
             "last_name": "Otherisgood",
             "email": "testotheruser@example.com",
             "is_email_verified": True,
-            "password": "testpassword123@",
+            "password": "Testpassword123@",
         }
         user = User.objects.create_user(**user_dict)
         return user
@@ -43,7 +43,7 @@ class TestUtil:
             "email": "testdisabled@example.com",
             "is_email_verified": True,
             "user_active": False,
-            "password": "testpassword789#",
+            "password": "Testpassword789#",
         }
         user = User.objects.create_user(**user_dict)
         return user
@@ -95,4 +95,5 @@ class TestUtil:
     
     def add_skill(name, desc, profile):
         skill = TestUtil.create_skill(name)
-        return ProfileSkill.objects.create(profile=profile, skill=skill, description=desc)
+        ProfileSkill.objects.create(profile=profile, skill=skill, description=desc)
+        return skill

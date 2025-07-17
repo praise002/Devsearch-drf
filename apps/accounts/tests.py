@@ -7,6 +7,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import Otp
+from apps.common.errors import ErrorCode
 from apps.common.schema_examples import ERR_RESPONSE_STATUS, SUCCESS_RESPONSE_STATUS
 from apps.common.utils import TestUtil
 
@@ -24,7 +25,7 @@ invalid_data = {
     "password": "short",
 }
 
-BAD_REQUEST = "bad_request"
+ErrorCode.VALIDATION_ERRORREQUEST = "ErrorCode.VALIDATION_ERRORrequest"
 EXPIRED = "expired"
 
 
@@ -81,7 +82,7 @@ class TestAccounts(APITestCase):
             self.login_url,
             {
                 "email": self.disabled_user.email,
-                "password": "testpassword789#",
+                "password": "Testpassword789#",
             },
         )
 
@@ -149,14 +150,14 @@ class TestAccounts(APITestCase):
 
         # Non-existent User
         response = self.client.post(self.send_email_url, {"email": "user@gmail.com"})
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 422)
 
         self.assertEqual(
             response.json(),
             {
                 "status": ERR_RESPONSE_STATUS,
                 "message": "No account is associated with this email.",
-                "code": BAD_REQUEST,
+                "code": ErrorCode.VALIDATION_ERROR,
             },
         )
 
@@ -193,13 +194,13 @@ class TestAccounts(APITestCase):
         response = self.client.post(
             self.verify_email_url, {"email": new_user.email, "otp": int(otp)}
         )
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 422)
         self.assertEqual(
             response.json(),
             {
                 "status": ERR_RESPONSE_STATUS,
                 "message": "Invalid OTP provided.",
-                "code": BAD_REQUEST,
+                "code": ErrorCode.VALIDATION_ERROR,
             },
         )
 
@@ -443,13 +444,13 @@ class TestAccounts(APITestCase):
         response = self.client.post(
             self.password_reset_request_url, {"email": "tom@gmail.com"}
         )
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 422)
         self.assertEqual(
             response.json(),
             {
                 "status": ERR_RESPONSE_STATUS,
                 "message": "User with this email does not exist.",
-                "code": BAD_REQUEST,
+                "code": ErrorCode.VALIDATION_ERROR,
             },
         )
 
@@ -463,13 +464,13 @@ class TestAccounts(APITestCase):
             self.password_reset_verify_otp_url,
             {"email": "nonexistentuser@example.com", "otp": int(otp)},
         )
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 422)
         self.assertEqual(
             response.json(),
             {
                 "status": ERR_RESPONSE_STATUS,
                 "message": "No account is associated with this email.",
-                "code": BAD_REQUEST,
+                "code": ErrorCode.VALIDATION_ERROR,
             },
         )
 
@@ -478,14 +479,14 @@ class TestAccounts(APITestCase):
             self.password_reset_verify_otp_url,
             {"email": verified_user.email, "otp": int("123457")},
         )
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 422)
 
         self.assertEqual(
             response.json(),
             {
                 "status": ERR_RESPONSE_STATUS,
                 "message": "The OTP could not be found. Please enter a valid OTP or request a new one.",
-                "code": BAD_REQUEST,
+                "code": ErrorCode.VALIDATION_ERROR,
             },
         )
 
@@ -551,14 +552,14 @@ class TestAccounts(APITestCase):
                 "confirm_password": "NewPassword123$",
             },
         )
-        # self.assertEqual(response.status_code, 400)
+        # self.assertEqual(response.status_code, 422)
 
         self.assertEqual(
             response.json(),
             {
                 "status": ERR_RESPONSE_STATUS,
                 "message": "No account is associated with this email.",
-                "code": BAD_REQUEST,
+                "code": ErrorCode.VALIDATION_ERROR,
             },
         )
 

@@ -164,8 +164,7 @@ class ResendVerificationEmailView(APIView):
         except User.DoesNotExist:
             return CustomResponse.error(
                 message="No account is associated with this email.",
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                err_code=ErrorCode.BAD_REQUEST,
+                err_code=ErrorCode.VALIDATION_ERROR,
             )
 
         if user.is_email_verified:
@@ -209,8 +208,7 @@ class VerifyEmailView(APIView):
         except User.DoesNotExist:
             return CustomResponse.error(
                 message="No account is associated with this email.",
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                err_code=ErrorCode.BAD_REQUEST,
+                err_code=ErrorCode.VALIDATION_ERROR,
             )
 
         # Check if the OTP is valid for this user
@@ -219,8 +217,7 @@ class VerifyEmailView(APIView):
         except Otp.DoesNotExist:
             return CustomResponse.error(
                 message="Invalid OTP provided.",
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                err_code=ErrorCode.BAD_REQUEST,
+                err_code=ErrorCode.VALIDATION_ERROR,
             )
 
         # Check if OTP is expired
@@ -356,8 +353,7 @@ class PasswordResetRequestView(APIView):
         except User.DoesNotExist:
             return CustomResponse.error(
                 message="User with this email does not exist.",
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                err_code=ErrorCode.BAD_REQUEST,
+                err_code=ErrorCode.VALIDATION_ERROR,
             )
 
         # Clear otps if another otp is requested
@@ -394,8 +390,7 @@ class VerifyOtpView(APIView):
         except User.DoesNotExist:
             return CustomResponse.error(
                 message="No account is associated with this email.",
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                err_code=ErrorCode.BAD_REQUEST,
+                err_code=ErrorCode.VALIDATION_ERROR,
             )
 
         # Check if the OTP is valid for this user
@@ -404,8 +399,7 @@ class VerifyOtpView(APIView):
         except Otp.DoesNotExist:
             return CustomResponse.error(
                 message="The OTP could not be found. Please enter a valid OTP or request a new one.",
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                err_code=ErrorCode.BAD_REQUEST,
+                err_code=ErrorCode.VALIDATION_ERROR,
             )
 
         # Check if OTP is expired
@@ -448,8 +442,7 @@ class PasswordResetDoneView(APIView):
         except User.DoesNotExist:
             return CustomResponse.error(
                 message="No account is associated with this email.",
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                err_code=ErrorCode.BAD_REQUEST,
+                err_code=ErrorCode.VALIDATION_ERROR,
             )
 
         # Update the user's password

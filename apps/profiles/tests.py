@@ -5,11 +5,11 @@ from apps.profiles.models import Profile
 
 
 class TestProfiles(APITestCase):
-    login_url = "/api/v1/auth/token/"
+
     profile_list_url = "/api/v1/profiles/"
     profile_url = "/api/v1/profiles/<str:username>/"
-    skill_create_url = "/api/v1/profiles/skill/"
-    skill_detail_url = "/api/v1/profiles/skill/<uuid:id>/"
+    skill_create_list_url = "/api/v1/profiles/skills/"
+    skill_u_d_url = "/api/v1/profiles/skills/<uuid:id>/"
 
     def setUp(self):
         # user
@@ -72,19 +72,19 @@ class TestProfiles(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["data"]["results"]), 0)
 
-    def test_skill_create_post(self):
+    def test_skill_post(self):
         # Authenticated User
         self.client.force_authenticate(user=self.user1)
         response = self.client.post(
-            self.skill_create_url,
+            self.skill_create_list_url,
             {"name": "Python"},
         )
 
         self.assertEqual(response.status_code, 201)
 
-        # Invalid Data - 400 Bad Request
+        # Invalid Data
         response = self.client.post(
-            self.skill_create_url,
+            self.skill_create_list_url,
             {"name": ""},
         )
         self.assertEqual(response.status_code, 422)
@@ -92,61 +92,10 @@ class TestProfiles(APITestCase):
         # Unauthenticated User
         self.client.force_authenticate(user=None)
         response = self.client.post(
-            self.skill_create_url,
+            self.skill_create_list_url,
             {"name": "Python"},
         )
         self.assertEqual(response.status_code, 401)
-
-    def test_skill_detail_get(self):
-        skill = TestUtil.add_skill(
-            "Django",
-            "Expert in Python development with Django and Flask frameworks",
-            self.profile1,
-        )
-        skill_id = skill.id
-
-        other_skill = TestUtil.add_skill(
-            "FASTAPI",
-            "Expert in AI Engineering with FASTAPI",
-            self.profile2,
-        )
-        other_skill_id = other_skill.id
-
-        # Unauthenticated User
-        response = self.client.get(
-            self.skill_detail_url.replace("<uuid:id>", str(skill_id))
-        )
-
-        self.assertEqual(response.status_code, 401)
-
-        # Authenticated User
-        self.client.force_authenticate(user=self.user1)
-        response = self.client.get(
-            self.skill_detail_url.replace("<uuid:id>", str(skill_id))
-        )
-
-        self.assertEqual(response.status_code, 200)
-
-        # Non-Existent Skill
-        response = self.client.get(
-            self.skill_detail_url.replace(
-                "<uuid:id>", "b88b7979-bb72-451d-b5ec-f9dca693a962"
-            ),
-        )
-
-        self.assertEqual(response.status_code, 404)
-
-        # Invalid skill id
-        response = self.client.get(self.skill_detail_url.replace("<uuid:id>", "9999"))
-
-        self.assertEqual(response.status_code, 404)
-
-        # 403
-        response = self.client.get(
-            self.skill_detail_url.replace("<uuid:id>", str(other_skill_id))
-        )
-
-        self.assertEqual(response.status_code, 403)
 
     def test_skill_patch(self):
         skill = TestUtil.add_skill(
@@ -154,6 +103,7 @@ class TestProfiles(APITestCase):
             "Expert in Python development with Django and Flask frameworks",
             self.profile1,
         )
+
         skill_id = skill.id
 
         other_skill = TestUtil.add_skill(
@@ -166,34 +116,36 @@ class TestProfiles(APITestCase):
         # Authenticated User
         self.client.force_authenticate(user=self.user1)
         response = self.client.patch(
-            self.skill_detail_url.replace("<uuid:id>", str(skill_id)),
-            {"name": "Django Updated"},
+            self.skill_u_d_url.replace("<uuid:id>", str(skill_id)),
+            {"description": "Django Updated"},
         )
+
+        print(response.json())
         self.assertEqual(response.status_code, 200)
 
-        self.assertEqual(response.data["data"].get("name"), "Django Updated")
+        self.assertEqual(response.data["data"].get("description"), "Django Updated")
 
         # Non-Existent Skill
         response = self.client.patch(
-            self.skill_detail_url.replace(
+            self.skill_u_d_url.replace(
                 "<uuid:id>", "3d628b38-e176-4560-987b-db412a05ff32"
             ),
-            {"name": "Skill Updated"},
+            {"description": "Skill Updated"},
         )
         self.assertEqual(response.status_code, 404)
 
         #  403
         response = self.client.patch(
-            self.skill_detail_url.replace("<uuid:id>", str(other_skill_id)),
-            {"name": "Django Updated"},
+            self.skill_u_d_url.replace("<uuid:id>", str(other_skill_id)),
+            {"description": "Django Updated"},
         )
         self.assertEqual(response.status_code, 403)
 
         # Unauthenticated User
         self.client.force_authenticate(user=None)
         response = self.client.patch(
-            self.skill_detail_url.replace("<uuid:id>", str(skill_id)),
-            {"name": "Django Updated"},
+            self.skill_u_d_url.replace("<uuid:id>", str(skill_id)),
+            {"description": "Django Updated"},
         )
         self.assertEqual(response.status_code, 401)
 
@@ -215,13 +167,13 @@ class TestProfiles(APITestCase):
         # Authenticated User
         self.client.force_authenticate(user=self.user1)
         response = self.client.delete(
-            self.skill_detail_url.replace("<uuid:id>", str(skill_id)),
+            self.skill_u_d_url.replace("<uuid:id>", str(skill_id)),
         )
         self.assertEqual(response.status_code, 204)
 
         # Non-Existent Skill
         response = self.client.delete(
-            self.skill_detail_url.replace(
+            self.skill_u_d_url.replace(
                 "<uuid:id>", "3d628b38-e176-4560-987b-db412a05ff32"
             ),
         )
@@ -229,13 +181,16 @@ class TestProfiles(APITestCase):
 
         # Delete someone else skill error - 403
         response = self.client.delete(
-            self.skill_detail_url.replace("<uuid:id>", str(other_skill_id))
+            self.skill_u_d_url.replace("<uuid:id>", str(other_skill_id))
         )
         self.assertEqual(response.status_code, 403)
 
         # Unauthenticated User
         self.client.force_authenticate(user=None)
         response = self.client.delete(
-            self.skill_detail_url.replace("<uuid:id>", str(skill_id))
+            self.skill_u_d_url.replace("<uuid:id>", str(skill_id))
         )
         self.assertEqual(response.status_code, 401)
+
+
+# python manage.py test apps.profiles.tests.TestProfiles.test_skill_create_post
