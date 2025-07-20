@@ -28,10 +28,12 @@ if DATABASE_URL:
     import dj_database_url
 
     if DATABASE_URL.startswith("postgresql://"):
-        dj_database_url.config(
-            conn_max_age=500,
-            conn_health_checks=True,
-        )
+        DATABASES = {
+            "default": dj_database_url.config(
+                conn_max_age=500,
+                conn_health_checks=True,
+            )
+        }
 
 
 SIMPLE_JWT = {

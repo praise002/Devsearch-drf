@@ -43,7 +43,7 @@ build:
 	docker-compose up --build -d --remove-orphans
 
 up:
-	docker-compose up -d
+	docker compose -f docker-compose.dev.yml up --watch
 
 down:
 	docker-compose down
