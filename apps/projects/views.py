@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Count, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
@@ -110,8 +111,13 @@ class ProjectListCreateView(HeaderMixin, APIView):
 
 
 class ProjectListCreateGenericView(ListCreateAPIView):
-    queryset = Project.objects.select_related("owner__user").prefetch_related(
-        "tags", "reviews"
+    queryset = (
+        Project.objects.select_related("owner__user")
+        .prefetch_related("tags", "reviews")
+        .annotate(
+            total_votes=Count("reviews"),
+            up_votes=Count("reviews", filter=Q(reviews__value="up")),
+        )
     )
 
     filter_backends = (DjangoFilterBackend, SearchFilter)
@@ -158,7 +164,12 @@ class ProjectListCreateGenericView(ListCreateAPIView):
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+            paginated_data = self.get_paginated_response(serializer.data)
+            return CustomResponse.success(
+                message="Projects retrieved successfully.",
+                data=paginated_data.data,
+                status_code=status.HTTP_200_OK,
+            )
 
         serializer = self.get_serializer(queryset, many=True)
         return CustomResponse.success(
@@ -541,8 +552,8 @@ class ReviewListCreateView(APIView):
     )
     def get(self, request, slug):
         project = self.get_project(slug)
-        
-        # Call this only when project is retrieved 
+
+        # Call this only when project is retrieved
         project.review_percentage
 
         # Retrieve all reviews for the specified project

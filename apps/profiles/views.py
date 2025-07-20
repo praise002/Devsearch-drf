@@ -1,3 +1,4 @@
+from django.db.models import Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
@@ -9,9 +10,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.exceptions import NotFoundError
-from apps.common.pagination import CustomPagination, DefaultPagination
+from apps.common.pagination import DefaultPagination
 from apps.common.responses import CustomResponse
-from apps.common.serializers import SuccessResponseSerializer
+
 from apps.profiles.filters import ProfileFilter
 from apps.profiles.schema_examples import (
     IMAGE_UPDATE_RESPONSE_EXAMPLE,
@@ -71,9 +72,17 @@ class ProfileRetrieveUpdateView(APIView):
         try:
             profile = (
                 Profile.objects.select_related("user")
-                .prefetch_related("skills")
+                .prefetch_related(
+                    Prefetch(
+                        "profileskill_set",
+                        queryset=ProfileSkill.objects.select_related("skill").order_by(
+                            "skill__name"
+                        ),
+                    )
+                )
                 .get(user__username=username)
             )
+
             serializer = self.get_serializer(profile)
             return CustomResponse.success(
                 message="Profile detail retrieved successfully.",
@@ -98,43 +107,24 @@ class ProfileRetrieveUpdateView(APIView):
         serializer = self.get_serializer(profile, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
-        profile = serializer.save()
-        profile_serializer = ProfileSerializer(profile)  # re-serialize
+        serializer.save()
 
         return CustomResponse.success(
             message="Profile updated successfully.",
-            data=profile_serializer.data,
+            data=serializer.data,
             status_code=status.HTTP_200_OK,
         )
 
 
-class ProfileListView(APIView):
-    serializer_class = ProfileSerializer
-    paginator_class = CustomPagination()
-    paginator_class.page_size = 10
-
-    @extend_schema(
-        summary="Retrieve a list of user profiles",
-        description="This endpoint allows authenticated and unauthenticated users to view a list of all user profiles in the system. It returns essential details about each profile.",
-        operation_id="list_profiles",  # Unique operationId
-        tags=tags,
-        responses={
-            200: SuccessResponseSerializer,
-        },
-    )
-    def get(self, request):
-        profiles = (
-            Profile.objects.select_related("user").prefetch_related("skills").all()
-        )
-
-        paginated_profiles = self.paginator_class.paginate_queryset(profiles, request)
-        serializer = self.serializer_class(paginated_profiles, many=True)
-
-        return self.paginator_class.get_paginated_response(serializer.data)
-
-
 class ProfileListGenericView(ListAPIView):
-    queryset = Profile.objects.select_related("user").prefetch_related("skills").all()
+    queryset = Profile.objects.select_related("user").prefetch_related(
+        Prefetch(
+            "profileskill_set",
+            queryset=ProfileSkill.objects.select_related("skill").order_by(
+                "skill__name"
+            ),
+        )
+    )
     serializer_class = ProfileSerializer
     filter_backends = (DjangoFilterBackend, SearchFilter)
     filterset_class = ProfileFilter
@@ -174,7 +164,12 @@ class ProfileListGenericView(ListAPIView):
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+            paginated_data = self.get_paginated_response(serializer.data)
+            return CustomResponse.success(
+                message="Profiles retrieved successfully.",
+                data=paginated_data.data,
+                status_code=status.HTTP_200_OK,
+            )
 
         serializer = self.get_serializer(queryset, many=True)
         return CustomResponse.success(
@@ -235,7 +230,12 @@ class SkillListCreateGenericView(ListCreateAPIView):
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+            paginated_data = self.get_paginated_response(serializer.data)
+            return CustomResponse.success(
+                message="Skills retrieved successfully.",
+                data=paginated_data.data,
+                status_code=status.HTTP_200_OK,
+            )
 
         serializer = self.get_serializer(queryset, many=True)
         return CustomResponse.success(
@@ -295,15 +295,9 @@ class SkillUpdateDestroyView(APIView):  # detail, edit, delete
 
     def get_object(self, id):
         try:
-            # 2 - check existence
             profile_skill = ProfileSkill.objects.select_related("skill").get(
-                skill__id=id
+                skill__id=id, profile=self.request.user.profile
             )
-            # 3 - check ownership
-            if profile_skill.profile != self.request.user.profile:
-                raise PermissionDenied(
-                    "You don't have permission to access this skill."
-                )
             return profile_skill
         except ProfileSkill.DoesNotExist:
             # Only reaches here if skill doesn't exist AND user is authenticated
@@ -317,7 +311,9 @@ class SkillUpdateDestroyView(APIView):  # detail, edit, delete
     )
     def patch(self, request, id):
         profile_skill = self.get_object(id)
-        serializer = self.serializer_class(profile_skill, data=request.data, partial=True)
+        serializer = self.serializer_class(
+            profile_skill, data=request.data, partial=True
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return CustomResponse.success(

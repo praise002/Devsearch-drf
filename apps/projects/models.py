@@ -79,21 +79,58 @@ class Project(BaseModel):
 
     #         self.save()
 
+    # TODO: REMOVE RETURN AND ONLY USE IT FOR SAVING
     @property
     def review_percentage(self) -> int:
-        up_votes = self.reviews.aggregate(
-            total=Count("id"), up=Count("id", filter=Q(value="up"))
-        )
+        if hasattr(self, "total_votes") and hasattr(self, "up_votes"):
+            total_votes = self.total_votes
+            up_votes = self.up_votes
 
-        total_votes = up_votes["total"]
-        up_votes = up_votes["up"]
+        else:
+            aggregates = self.reviews.aggregate(
+                total=Count("id"), up=Count("id", filter=Q(value="up"))
+            )
+
+            total_votes = aggregates["total"]
+            up_votes = aggregates["up"]
 
         if total_votes > 0:
             ratio = (up_votes / total_votes) * 100
-            self.vote_total = total_votes
-            self.vote_ratio = ratio
+            print(type(ratio))
+            print(ratio)
+            # Only update if values changed
+            if self.vote_total != total_votes or self.vote_ratio != ratio:
+                self.vote_total = total_votes
+                self.vote_ratio = ratio
+                print(self.vote_ratio)
 
-            self.save(update_fields=["vote_total", "vote_ratio"])
+                self.save(update_fields=["vote_total", "vote_ratio"])
+            
+            return int(ratio)
+        return 0
+    
+    # TODO: LOOK INTO THIS
+    # @property
+    # def review_percentage(self) -> int:
+    #     # Skip calculation if we know there are no reviews
+    #     if self.vote_total == 0 and not self.reviews.exists():
+    #         return 0
+            
+    #     aggregates = self.reviews.aggregate(
+    #         total=Count('id'),
+    #         up=Count('id', filter=Q(value='up'))
+    #     )
+    #     total = aggregates['total']
+    #     up = aggregates['up']
+    #     ratio = (up/total)*100 if total > 0 else 0
+        
+    #     # Only update if changed
+    #     if self.vote_total != total or self.vote_ratio != ratio:
+    #         self.vote_total = total
+    #         self.vote_ratio = ratio
+    #         self.save(update_fields=['vote_total', 'vote_ratio'])
+        
+    #     return ratio
 
 
 class Review(BaseModel):

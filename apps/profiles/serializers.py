@@ -85,7 +85,9 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
 
 class ProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-    skills = serializers.SerializerMethodField()
+    skills = ProfileSkillSerializer(
+        source="profileskill_set", many=True, read_only=True
+    )
     avatar_url = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -102,11 +104,6 @@ class ProfileSerializer(serializers.ModelSerializer):
             "skills",
             "avatar_url",
         ]
-
-    @extend_schema_field(ProfileSkillSerializer(many=True))
-    def get_skills(self, obj):
-        profile_skills = obj.profileskill_set.all().select_related("skill")
-        return ProfileSkillSerializer(profile_skills, many=True).data
 
     @extend_schema_field(serializers.URLField)
     def get_avatar_url(self, obj):

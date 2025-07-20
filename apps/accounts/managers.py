@@ -1,12 +1,14 @@
 from django.contrib.auth.base_user import BaseUserManager
 from django.core.exceptions import ValidationError
-from django.utils.translation import gettext_lazy as _
 
-class CustomUserManager(BaseUserManager):
+
+from apps.common.manager import GetOrNoneManager
+
+class CustomUserManager(BaseUserManager, GetOrNoneManager):
     # username_field + required_fields
     def create_user(self, first_name, last_name, email, password, **extra_fields): 
         if not (first_name and last_name) :
-            raise ValidationError(_("You must submit a first_name and a last_name"))
+            raise ValidationError("You must submit a first_name and a last_name")
         
         user = self.model(
             first_name=first_name, last_name=last_name, email=email, **extra_fields
@@ -21,10 +23,10 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault("is_superuser", True)
         
         if extra_fields.get("is_staff") == False:
-            raise ValidationError(_("Super users must have is_staff set to True"))
+            raise ValidationError("Super users must have is_staff set to True")
         
         if extra_fields.get("is_superuser") == False:
-            raise ValidationError(_("Super users must have is_superuser set to True"))
+            raise ValidationError("Super users must have is_superuser set to True")
         
         user = self.create_user(
             first_name=first_name,
