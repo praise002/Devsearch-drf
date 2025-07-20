@@ -55,7 +55,6 @@ RUN pip install --no-cache-dir /wheels/* && \
 COPY . . 
 
 # Make scripts executable
-RUN chmod +x ./deployment/docker-run && \
-    chmod +x ./deployment/celery
+RUN chmod +x ./deployment/docker-run 
 
 CMD ["./deployment/docker-run"]
