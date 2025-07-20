@@ -13,22 +13,22 @@ ALLOWED_HOSTS = ["*"]  # likely heroku
 
 DATABASE_URL = config("DATABASE_URL")
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("POSTGRES_DB"),
-        "USER": config("POSTGRES_USER"),
-        "PASSWORD": config("POSTGRES_PASSWORD"),
-        "HOST": "db",
-        "PORT": config("POSTGRES_PORT"),
-    }
-}
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": config("POSTGRES_DB"),
+#         "USER": config("POSTGRES_USER"),
+#         "PASSWORD": config("POSTGRES_PASSWORD"),
+#         "HOST": "db",
+#         "PORT": config("POSTGRES_PORT"),
+#     }
+# }
 
 if DATABASE_URL:
     import dj_database_url
 
     if DATABASE_URL.startswith("postgresql://"):
-        DATABASES["default"] = dj_database_url.config(
+        dj_database_url.config(
             conn_max_age=500,
             conn_health_checks=True,
         )
