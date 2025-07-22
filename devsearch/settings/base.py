@@ -217,9 +217,9 @@ REST_FRAMEWORK = {
 
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "DEVSEARCH V2 API",
+    "TITLE": "DEVSEARCH",
     "DESCRIPTION": """
-        DEVSEARCH V2 API is a powerful platform designed to connect developers around the world. 
+        DEVSEARCH API is a powerful platform designed to connect developers around the world. 
         It provides a range of functionalities to support collaboration, skill-sharing, and project discovery.
         The API allows developers to create and manage their profiles, list and search for projects, 
         rate and review projects, and connect with other professionals.
