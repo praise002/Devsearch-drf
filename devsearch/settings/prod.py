@@ -27,7 +27,7 @@ DATABASE_URL = config("DATABASE_URL")
 if DATABASE_URL:
     import dj_database_url
 
-    if DATABASE_URL.startswith("postgresql://"):
+    if DATABASE_URL.startswith("postgres://"):
         DATABASES = {
             "default": dj_database_url.config(
                 conn_max_age=500,
