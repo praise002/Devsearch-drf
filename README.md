@@ -1,6 +1,8 @@
 # DevSearch API
 
 ![Django Tests](https://github.com/praise002/clothing_store_drf/actions/workflows/django-tests.yml/badge.svg)
+<br/>
+[Live URL](https://infinite-beach-61393-2eb111cc1308.herokuapp.com/)
 
 A Django REST API for a developer community platform where developers can showcase their projects, connect with other developers, and collaborate on exciting projects.
 
@@ -68,7 +70,6 @@ A Django REST API for a developer community platform where developers can showca
    ```
    - Update the environment variables in `.env`:
     
-You can run 
 5. **Database Setup**
    - Create PostgreSQL database
    - Run migrations:
