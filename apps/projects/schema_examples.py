@@ -434,6 +434,14 @@ TAG_REMOVE_RESPONSE_EXAMPLE = {
                     "code": ErrorCode.NON_EXISTENT,
                 },
             ),
+            OpenApiExample(
+                name="Tag not associated with project",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "Tag not associated with this project.",
+                    "code": ErrorCode.NON_EXISTENT,
+                },
+            ),
         ],
     ),
 }

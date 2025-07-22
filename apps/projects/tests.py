@@ -262,9 +262,8 @@ class TestProjects(APITestCase):
         response = self.client.get(
             self.tag_list_url.replace("<slug:slug>", self.project1.slug)
         )
-        print(response.json())
 
-        self.assertIn("new tag", response.data["data"]["results"][1].get("name"))
+        self.assertIn("new tag", response.data["results"][1].get("name"))
 
         # Test that an error is returned when the tag name is missing or invalid.
         response = self.client.post(

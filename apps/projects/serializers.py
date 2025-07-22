@@ -77,7 +77,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     owner = serializers.StringRelatedField(read_only=True)  # Display owner name
     tags = TagSerializer(many=True, read_only=True)
     featured_image_url = serializers.SerializerMethodField()
-    review_percentage = serializers.SerializerMethodField()
+    # review_percentage = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -86,7 +86,6 @@ class ProjectSerializer(serializers.ModelSerializer):
             "title",
             "slug",
             "owner",
-            "featured_image",
             "featured_image_url",
             "description",
             "source_link",
@@ -94,16 +93,21 @@ class ProjectSerializer(serializers.ModelSerializer):
             "tags",
             "vote_total",
             "vote_ratio",
-            "review_percentage",
+            # "review_percentage",
         ]
 
     @extend_schema_field(serializers.URLField)
     def get_featured_image_url(self, obj):
         return obj.featured_image_url
 
-    @extend_schema_field(serializers.IntegerField)
-    def get_review_percentage(self, obj):
-        return obj.review_percentage
+    # @extend_schema_field(serializers.IntegerField)
+    # def get_review_percentage(self, obj):
+    #     return obj.review_percentage
+    
+    def to_representation(self, instance):
+        # Trigger calculation
+        _ = instance.review_percentage
+        return super().to_representation(instance)
 
 
 class ReviewSerializer(serializers.ModelSerializer):

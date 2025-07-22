@@ -235,6 +235,36 @@ SKILL_CREATE_RESPONSE_EXAMPLE = {
                 name="Success Response with empty description",
                 value={
                     "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Skill added successfully.",
+                    "data": SKILL_EXAMPLE_1,
+                },
+            ),
+            OpenApiExample(
+                name="Success Response with description",
+                value={
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Skill added successfully.",
+                    "data": SKILL_EXAMPLE_2,
+                },
+            ),
+        ],
+    ),
+    401: UNAUTHORIZED_USER_RESPONSE,
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
+    ),
+}
+
+SKILL_CREATE_ALTERNATIVE_RESPONSE_EXAMPLE = {
+    201: OpenApiResponse(
+        description="Skill Create Successful",
+        response=ProfileSkillSerializer,
+        examples=[
+            OpenApiExample(
+                name="Success Response with empty description",
+                value={
+                    "status": SUCCESS_RESPONSE_STATUS,
                     "message": "Skill created successfully.",
                     "data": SKILL_EXAMPLE_1,
                 },
@@ -256,52 +286,6 @@ SKILL_CREATE_RESPONSE_EXAMPLE = {
     ),
 }
 
-# TODO: REMOVE LATER IF NOT USED
-SKILL_GET_RESPONSE_EXAMPLE = {
-    200: OpenApiResponse(
-        description="Skill Retrieved",
-        response=ProfileSkillSerializer,
-        examples=[
-            OpenApiExample(
-                name="Success Response",
-                value={
-                    "status": SUCCESS_RESPONSE_STATUS,
-                    "message": "Skill retrieved successfully.",
-                    "data": SKILL_EXAMPLE_2,
-                },
-            ),
-        ],
-    ),
-    401: UNAUTHORIZED_USER_RESPONSE,
-    403: OpenApiResponse(
-        description="Permission Denied",
-        response=ErrorResponseSerializer,
-        examples=[
-            OpenApiExample(
-                name="Permission Denied",
-                value={
-                    "status": ERR_RESPONSE_STATUS,
-                    "message": "You don't have permission to access this skill.",
-                    "code": ErrorCode.FORBIDDEN,
-                },
-            ),
-        ],
-    ),
-    404: OpenApiResponse(
-        response=ErrorResponseSerializer,
-        description="Skill not found",
-        examples=[
-            OpenApiExample(
-                name="Skill not found",
-                value={
-                    "status": ERR_RESPONSE_STATUS,
-                    "message": "Skill not found.",
-                    "code": ErrorCode.NON_EXISTENT,
-                },
-            ),
-        ],
-    ),
-}
 
 SKILL_UPDATE_RESPONSE_EXAMPLE = {
     200: OpenApiResponse(

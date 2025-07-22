@@ -108,6 +108,24 @@ LOGIN_RESPONSE_EXAMPLE = {
     403: OpenApiResponse(
         response=ErrorResponseSerializer,
         description="Permission Denied",
+        examples=[
+            OpenApiExample(
+                name="Email not verified",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "Email not verified. Please verify your email before logging in.",
+                    "code": ErrorCode.FORBIDDEN,
+                },
+            ),
+            OpenApiExample(
+                name="Account disabled",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "Your account has been disabled. Please contact support for assistance.",
+                    "code": ErrorCode.FORBIDDEN,
+                },
+            ),
+        ],
     ),
     422: OpenApiResponse(
         response=ErrorDataResponseSerializer,
@@ -137,6 +155,20 @@ RESEND_VERIFICATION_EMAIL_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
+    400: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Bad Request",
+        examples=[
+            OpenApiExample(
+                name="No account found",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "No account is associated with this email.",
+                    "code": ErrorCode.VALIDATION_ERROR,
+                },
+            ),
+        ],
+    ),
     422: OpenApiResponse(
         response=ErrorDataResponseSerializer,
         description="Validation Error",
@@ -154,6 +186,35 @@ VERIFY_EMAIL_RESPONSE_EXAMPLE = {
                 value={
                     "status": SUCCESS_RESPONSE_STATUS,
                     "message": "Email verified successfully.",
+                },
+            ),
+            OpenApiExample(
+                name="Email already verified",
+                value={
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Email address already verified. No OTP sent.",
+                },
+            ),
+        ],
+    ),
+    400: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Bad Request",
+        examples=[
+            OpenApiExample(
+                name="No account found",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "No account is associated with this email.",
+                    "code": ErrorCode.VALIDATION_ERROR,
+                },
+            ),
+            OpenApiExample(
+                name="Invalid OTP",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "Invalid OTP provided.",
+                    "code": ErrorCode.VALIDATION_ERROR,
                 },
             ),
         ],
@@ -228,6 +289,20 @@ LOGOUT_ALL_RESPONSE_EXAMPLE = {
         ],
     ),
     401: ErrorResponseSerializer,
+    500: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Internal Server Error",
+        examples=[
+            OpenApiExample(
+                name="Logout Error",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "Error during logout",
+                    "code": ErrorCode.SERVER_ERROR,
+                },
+            ),
+        ],
+    ),
 }
 
 PASSWORD_CHANGE_RESPONSE_EXAMPLE = {
@@ -270,6 +345,20 @@ PASSWORD_RESET_REQUEST_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
+    400: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Bad Request",
+        examples=[
+            OpenApiExample(
+                name="User does not exist",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "User with this email does not exist.",
+                    "code": ErrorCode.VALIDATION_ERROR,
+                },
+            ),
+        ],
+    ),
     422: OpenApiResponse(
         response=ErrorDataResponseSerializer,
         description="Validation Error",
@@ -288,7 +377,29 @@ VERIFY_OTP_RESPONSE_EXAMPLE = {
                 name="OTP Verification Successful",
                 value={
                     "status": SUCCESS_RESPONSE_STATUS,
-                    "message": "OTP verified, proceed to set new password.",
+                    "message": "OTP verified, proceed to set a new password.",
+                },
+            ),
+        ],
+    ),
+    400: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Bad Request",
+        examples=[
+            OpenApiExample(
+                name="No account found",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "No account is associated with this email.",
+                    "code": ErrorCode.VALIDATION_ERROR,
+                },
+            ),
+            OpenApiExample(
+                name="OTP not found",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "The OTP could not be found. Please enter a valid OTP or request a new one.",
+                    "code": ErrorCode.VALIDATION_ERROR,
                 },
             ),
         ],
@@ -324,6 +435,20 @@ PASSWORD_RESET_DONE_RESPONSE_EXAMPLE = {
                 value={
                     "status": SUCCESS_RESPONSE_STATUS,
                     "message": "Your password has been reset, proceed to login.",
+                },
+            ),
+        ],
+    ),
+    400: OpenApiResponse(
+        response=ErrorResponseSerializer,
+        description="Bad Request",
+        examples=[
+            OpenApiExample(
+                name="No account found",
+                value={
+                    "status": ERR_RESPONSE_STATUS,
+                    "message": "No account is associated with this email.",
+                    "code": ErrorCode.VALIDATION_ERROR,
                 },
             ),
         ],

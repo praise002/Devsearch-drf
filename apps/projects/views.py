@@ -206,7 +206,7 @@ class ProjectRetrieveUpdateDestroyView(APIView):
 
     def get_object(self, slug):
         try:
-            obj = Project.objects.prefetch_related("tags").get(slug=slug)
+            obj = Project.objects.prefetch_related("tags").select_related("owner__user").get(slug=slug)
             # TODO: MIGHT CHANGE LATER IF IT AFFECTS QUERY PERFORMANCE
             if self.request.method in ["PATCH", "PUT", "DELETE"]:
                 self.check_object_permissions(

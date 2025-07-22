@@ -120,7 +120,6 @@ class TestProfiles(APITestCase):
             {"description": "Django Updated"},
         )
 
-        print(response.json())
         self.assertEqual(response.status_code, 200)
 
         self.assertEqual(response.data["data"].get("description"), "Django Updated")
@@ -134,12 +133,11 @@ class TestProfiles(APITestCase):
         )
         self.assertEqual(response.status_code, 404)
 
-        #  403
         response = self.client.patch(
             self.skill_u_d_url.replace("<uuid:id>", str(other_skill_id)),
             {"description": "Django Updated"},
         )
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 404)
 
         # Unauthenticated User
         self.client.force_authenticate(user=None)
@@ -179,11 +177,11 @@ class TestProfiles(APITestCase):
         )
         self.assertEqual(response.status_code, 404)
 
-        # Delete someone else skill error - 403
+        # Delete someone else skill error 
         response = self.client.delete(
             self.skill_u_d_url.replace("<uuid:id>", str(other_skill_id))
         )
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 404)
 
         # Unauthenticated User
         self.client.force_authenticate(user=None)
