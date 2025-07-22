@@ -206,7 +206,11 @@ class ProjectRetrieveUpdateDestroyView(APIView):
 
     def get_object(self, slug):
         try:
-            obj = Project.objects.prefetch_related("tags").select_related("owner__user").get(slug=slug)
+            obj = (
+                Project.objects.prefetch_related("tags")
+                .select_related("owner__user")
+                .get(slug=slug)
+            )
             # TODO: MIGHT CHANGE LATER IF IT AFFECTS QUERY PERFORMANCE
             if self.request.method in ["PATCH", "PUT", "DELETE"]:
                 self.check_object_permissions(
@@ -552,9 +556,6 @@ class ReviewListCreateView(APIView):
     )
     def get(self, request, slug):
         project = self.get_project(slug)
-
-        # Call this only when project is retrieved
-        project.review_percentage
 
         # Retrieve all reviews for the specified project
         reviews = Review.objects.filter(project=project)
