@@ -114,12 +114,6 @@ class LoginView(TokenObtainPairView):
             raise InvalidToken(e.args[0])
 
         if settings.DEBUG:
-            response = CustomResponse.success(
-                message="Login successful.",
-                data=serializer.validated_data,
-                status_code=status.HTTP_200_OK,
-            )
-        else:
             # Extract the refresh token from the response
             refresh = serializer.validated_data["refresh"]
             access = serializer.validated_data["access"]
@@ -138,6 +132,12 @@ class LoginView(TokenObtainPairView):
                 httponly=True,  # Prevent JavaScript access
                 secure=True,  # Only send over HTTPS
                 samesite="None",  # Allow cross-origin requests if frontend and backend are on different domains
+            )
+        else:
+            response = CustomResponse.success(
+                message="Login successful.",
+                data=serializer.validated_data,
+                status_code=status.HTTP_200_OK,
             )
 
         return response
@@ -268,12 +268,13 @@ class LogoutView(TokenBlacklistView):
             raise InvalidToken(e.args[0])
 
         if settings.DEBUG:
+            # Clear the HTTP-only cookie containing the refresh token
+            response.delete_cookie("refresh")
+        else:
+
             response = CustomResponse.success(
                 message="Logged out successfully.", status_code=status.HTTP_200_OK
             )
-        else:
-            # Clear the HTTP-only cookie containing the refresh token
-            response.delete_cookie("refresh")
         return response
 
 

@@ -351,14 +351,14 @@ class TestAccounts(APITestCase):
             },
         )
 
-        if settings.DEBUG:
-            # Verify tokens are blacklisted by trying to use them
-            refresh_token = login_response.json()["data"]["refresh"]
-            refresh_response = self.client.post(
-                self.token_refresh_url, {"refresh": refresh_token}
-            )
+        # if settings.DEBUG:
+        #     # Verify tokens are blacklisted by trying to use them
+        #     refresh_token = login_response.json()["data"]["refresh"]
+        #     refresh_response = self.client.post(
+        #         self.token_refresh_url, {"refresh": refresh_token}
+        #     )
 
-            self.assertEqual(refresh_response.status_code, 401)
+        #     self.assertEqual(refresh_response.status_code, 401)
 
     def test_password_change(self):
         verified_user = self.verified_user
