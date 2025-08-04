@@ -1,3 +1,4 @@
+from django.conf import settings
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse
 
 from apps.accounts.serializers import (
@@ -14,16 +15,22 @@ from apps.common.errors import ErrorCode
 from apps.common.schema_examples import (
     ACCESS_TOKEN,
     ERR_RESPONSE_STATUS,
+    REFRESH_TOKEN,
     SUCCESS_RESPONSE_STATUS,
 )
 from apps.common.serializers import ErrorDataResponseSerializer, ErrorResponseSerializer
 
 REGISTER_EXAMPLE = {"email": "bob123@example.com"}
 
-LOGIN_EXAMPLE = {
-    # "refresh": REFRESH_TOKEN,
-    "access": ACCESS_TOKEN,
-}
+if settings.DEBUG:
+    LOGIN_EXAMPLE = {
+        "access": ACCESS_TOKEN,
+    }
+else:
+    LOGIN_EXAMPLE = {
+        "refresh": REFRESH_TOKEN,
+        "access": ACCESS_TOKEN,
+    }
 
 REFRESH_TOKEN_EXAMPLE = {
     "access": ACCESS_TOKEN,
@@ -197,9 +204,9 @@ VERIFY_EMAIL_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
-    400: OpenApiResponse(
-        response=ErrorResponseSerializer,
-        description="Bad Request",
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
         examples=[
             OpenApiExample(
                 name="No account found",
@@ -217,11 +224,16 @@ VERIFY_EMAIL_RESPONSE_EXAMPLE = {
                     "code": ErrorCode.VALIDATION_ERROR,
                 },
             ),
+            OpenApiExample(
+                name="Field Validation Error",
+                value={
+                    "status": "error",
+                    "message": "Some fields are invalid.",
+                    "code": "validation_error",
+                    "data": {"otp": ["This field is required."]},
+                },
+            ),
         ],
-    ),
-    422: OpenApiResponse(
-        response=ErrorDataResponseSerializer,
-        description="Validation Error",
     ),
     498: OpenApiResponse(
         response=VerifyOtpSerializer,
