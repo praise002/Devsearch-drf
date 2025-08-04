@@ -167,9 +167,9 @@ RESEND_VERIFICATION_EMAIL_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
-    400: OpenApiResponse(
+    422: OpenApiResponse(
         response=ErrorResponseSerializer,
-        description="Bad Request",
+        description="Validation Error",
         examples=[
             OpenApiExample(
                 name="No account found",
@@ -179,11 +179,16 @@ RESEND_VERIFICATION_EMAIL_RESPONSE_EXAMPLE = {
                     "code": ErrorCode.VALIDATION_ERROR,
                 },
             ),
+            OpenApiExample(
+                name="Field Validation Error",
+                value={
+                    "status": "error",
+                    "message": "Some fields are invalid.",
+                    "code": "validation_error",
+                    "data": {"email": ["This field is required."]},
+                },
+            ),
         ],
-    ),
-    422: OpenApiResponse(
-        response=ErrorDataResponseSerializer,
-        description="Validation Error",
     ),
 }
 
