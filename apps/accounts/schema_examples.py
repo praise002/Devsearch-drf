@@ -32,10 +32,15 @@ else:
         "access": ACCESS_TOKEN,
     }
 
-REFRESH_TOKEN_EXAMPLE = {
-    "access": ACCESS_TOKEN,
-    # "refresh": REFRESH_TOKEN,
-}
+if settings.DEBUG:
+    REFRESH_TOKEN_EXAMPLE = {
+        "access": ACCESS_TOKEN,
+    }
+else:
+    REFRESH_TOKEN_EXAMPLE = {
+        "access": ACCESS_TOKEN,
+        "refresh": REFRESH_TOKEN,
+    }
 
 UNAUTHORIZED_USER_RESPONSE = OpenApiResponse(
     response=ErrorResponseSerializer,
