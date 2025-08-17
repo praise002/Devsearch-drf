@@ -75,12 +75,38 @@ logging.config.dictConfig(
                 "maxBytes": 10485760,  # 10 MB
                 "backupCount": 5,  # Keep up to 5 backup files
             },
+            "security_file": {
+                "level": "INFO",
+                "class": "logging.handlers.RotatingFileHandler",
+                "formatter": "file",
+                "filename": "logs/security.log",
+                "maxBytes": 10485760,  # 10 MB
+                "backupCount": 5,  # Keep up to 5 backup files
+            },
+            "auth_file": {
+                "level": "INFO",
+                "class": "logging.handlers.RotatingFileHandler",
+                "formatter": "file",
+                "filename": "logs/auth.log",
+                "maxBytes": 10485760,  # 10 MB
+                "backupCount": 5,  # Keep up to 5 backup files
+            },
             "django.server": DEFAULT_LOGGING["handlers"]["django.server"],
         },
         "loggers": {
             "": {
                 "level": "DEBUG",
                 "handlers": ["console", "file"],
+                "propagate": False,
+            },
+            "security": {
+                "handlers": ["security_file"],
+                "level": "INFO",
+                "propagate": False,
+            },
+            "auth": {
+                "handlers": ["auth_file"],
+                "level": "INFO",
                 "propagate": False,
             },
             "apps": {

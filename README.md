@@ -248,3 +248,36 @@ If you have any questions or need help, please open an issue on GitHub.
 
 **Built with ❤️ by Praise**
 
+## 🔒 Security Considerations
+
+### Password Change Session Management
+
+This API implements a balanced approach to session management during password changes, considering both security and user experience:
+
+#### **Current Implementation:**
+- **Password Change**: Invalidates all other sessions but preserves the current session with new tokens
+- **Password Reset**: Invalidates all sessions (user must log in again with new password)
+
+#### **Security Rationale:**
+
+**Why we preserve the current session on password change:**
+- Users change passwords for various reasons, not just security breaches
+- Terminating the current session creates poor user experience
+- The user actively initiated the change, indicating they control the session
+
+**Why we invalidate all sessions on password reset:**
+- Password reset typically indicates a compromised or forgotten password
+- Higher security risk warrants more aggressive session invalidation
+- Forces re-authentication with the new password across all devices
+
+#### **Best Practices Implemented:**
+- ✅ Token rotation on password change (new access/refresh tokens issued)
+- ✅ Complete session invalidation on password reset
+- ✅ HTTP-only cookies for refresh tokens in production
+- ✅ Comprehensive security logging for audit trails
+- ✅ Email notifications for password changes
+
+#### **Reference:**
+Based on security best practices discussed in: [Password Change Session Management](https://security.stackexchange.com/questions/63256/on-password-change-in-a-web-application-should-it-log-out-all-other-sessions)
+
+> *"A better approach would be prompting user for the password before any next action he takes in his current session"* - while this could be implemented as an additional security layer, our current implementation balances security with usability by requiring the current password for changes and rotating tokens.

@@ -26,8 +26,15 @@ if settings.DEBUG:
     LOGIN_EXAMPLE = {
         "access": ACCESS_TOKEN,
     }
+    PASSWORD_CHANGE_EXAMPLE = {
+        "access": ACCESS_TOKEN,
+    }
 else:
     LOGIN_EXAMPLE = {
+        "refresh": REFRESH_TOKEN,
+        "access": ACCESS_TOKEN,
+    }
+    PASSWORD_CHANGE_EXAMPLE = {
         "refresh": REFRESH_TOKEN,
         "access": ACCESS_TOKEN,
     }
@@ -146,7 +153,6 @@ LOGIN_RESPONSE_EXAMPLE = {
 }
 
 RESEND_VERIFICATION_EMAIL_RESPONSE_EXAMPLE = {
-    # 200: SuccessResponseSerializer,
     200: OpenApiResponse(
         response=SendOtpSerializer,
         description="OTP Resent Successful",
@@ -230,7 +236,7 @@ VERIFY_EMAIL_RESPONSE_EXAMPLE = {
                 name="Invalid OTP",
                 value={
                     "status": ERR_RESPONSE_STATUS,
-                    "message": "Invalid OTP provided.",
+                    "message": "Invalid or expired OTP. Please enter a valid OTP or request a new one.",
                     "code": ErrorCode.VALIDATION_ERROR,
                 },
             ),
@@ -241,19 +247,6 @@ VERIFY_EMAIL_RESPONSE_EXAMPLE = {
                     "message": "Some fields are invalid.",
                     "code": "validation_error",
                     "data": {"otp": ["This field is required."]},
-                },
-            ),
-        ],
-    ),
-    498: OpenApiResponse(
-        response=VerifyOtpSerializer,
-        description="OTP Expired",
-        examples=[
-            OpenApiExample(
-                name="OTP Expired",
-                value={
-                    "status": SUCCESS_RESPONSE_STATUS,
-                    "message": "OTP has expired, please request a new one.",
                 },
             ),
         ],
@@ -328,18 +321,24 @@ LOGOUT_ALL_RESPONSE_EXAMPLE = {
 }
 
 PASSWORD_CHANGE_RESPONSE_EXAMPLE = {
-    # 200: SuccessResponseSerializer,
-    # 401: ErrorResponseSerializer,
-    # 422: ErrorDataResponseSerializer,
     200: OpenApiResponse(
         response=PasswordChangeSerializer,
         description="Password Change Successful",
         examples=[
             OpenApiExample(
-                name="Password Change Successful",
+                name="Password Change Successful (Production)",
                 value={
                     "status": SUCCESS_RESPONSE_STATUS,
-                    "message": "Password changed successfully.",
+                    "message": "Password changed successfully. Please use the new tokens.",
+                    "data": PASSWORD_CHANGE_EXAMPLE,
+                },
+            ),
+            OpenApiExample(
+                name="Password Change Successful (Debug)",
+                value={
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Password changed successfully. Please use the new access token.",
+                    "data": {"access": ACCESS_TOKEN},
                 },
             ),
         ],
@@ -348,12 +347,36 @@ PASSWORD_CHANGE_RESPONSE_EXAMPLE = {
     422: OpenApiResponse(
         response=ErrorDataResponseSerializer,
         description="Validation Error",
+        examples=[
+            OpenApiExample(
+                name="Password mismatch",
+                value={
+                    "status": "error",
+                    "message": "Some fields are invalid.",
+                    "code": "validation_error",
+                    "data": {
+                        "error": ["New password and confirm password do not match."]
+                    },
+                },
+            ),
+            OpenApiExample(
+                name="Incorrect old password",
+                value={
+                    "status": "error",
+                    "message": "Some fields are invalid.",
+                    "code": "validation_error",
+                    "data": {
+                        "error": [
+                            "The current password you entered is incorrect. Please try again."
+                        ]
+                    },
+                },
+            ),
+        ],
     ),
 }
 
 PASSWORD_RESET_REQUEST_RESPONSE_EXAMPLE = {
-    # 200: SuccessResponseSerializer,
-    # 422: ErrorDataResponseSerializer,
     200: OpenApiResponse(
         response=RequestPasswordResetOtpSerializer,
         description="Password Reset Request Successful",
@@ -362,21 +385,7 @@ PASSWORD_RESET_REQUEST_RESPONSE_EXAMPLE = {
                 name="Password Reset Request Successful",
                 value={
                     "status": SUCCESS_RESPONSE_STATUS,
-                    "message": "OTP sent successfully.",
-                },
-            ),
-        ],
-    ),
-    400: OpenApiResponse(
-        response=ErrorResponseSerializer,
-        description="Bad Request",
-        examples=[
-            OpenApiExample(
-                name="User does not exist",
-                value={
-                    "status": ERR_RESPONSE_STATUS,
-                    "message": "User with this email does not exist.",
-                    "code": ErrorCode.VALIDATION_ERROR,
+                    "message": "If that email address is in our database, we will send you an email to reset your password.",
                 },
             ),
         ],
@@ -384,13 +393,21 @@ PASSWORD_RESET_REQUEST_RESPONSE_EXAMPLE = {
     422: OpenApiResponse(
         response=ErrorDataResponseSerializer,
         description="Validation Error",
+        examples=[
+            OpenApiExample(
+                name="Field Validation Error",
+                value={
+                    "status": "error",
+                    "message": "Some fields are invalid.",
+                    "code": "validation_error",
+                    "data": {"email": ["This field is required."]},
+                },
+            ),
+        ],
     ),
 }
 
 VERIFY_OTP_RESPONSE_EXAMPLE = {
-    # 200: SuccessResponseSerializer,
-    # 422: ErrorDataResponseSerializer,
-    # 498: ErrorResponseSerializer,
     200: OpenApiResponse(
         response=VerifyOtpSerializer,
         description="OTP Verification Successful",
@@ -404,9 +421,9 @@ VERIFY_OTP_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
-    400: OpenApiResponse(
-        response=ErrorResponseSerializer,
-        description="Bad Request",
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
         examples=[
             OpenApiExample(
                 name="No account found",
@@ -417,28 +434,20 @@ VERIFY_OTP_RESPONSE_EXAMPLE = {
                 },
             ),
             OpenApiExample(
-                name="OTP not found",
+                name="Invalid OTP",
                 value={
                     "status": ERR_RESPONSE_STATUS,
-                    "message": "The OTP could not be found. Please enter a valid OTP or request a new one.",
+                    "message": "Invalid or expired OTP. Please enter a valid OTP or request a new one.",
                     "code": ErrorCode.VALIDATION_ERROR,
                 },
             ),
-        ],
-    ),
-    422: OpenApiResponse(
-        response=ErrorDataResponseSerializer,
-        description="Validation Error",
-    ),
-    498: OpenApiResponse(
-        response=VerifyOtpSerializer,
-        description="OTP Expired",
-        examples=[
             OpenApiExample(
-                name="OTP Expired",
+                name="Field Validation Error",
                 value={
-                    "status": SUCCESS_RESPONSE_STATUS,
-                    "message": "OTP has expired, please request a new one.",
+                    "status": "error",
+                    "message": "Some fields are invalid.",
+                    "code": "validation_error",
+                    "data": {"otp": ["This field is required."]},
                 },
             ),
         ],
@@ -446,8 +455,6 @@ VERIFY_OTP_RESPONSE_EXAMPLE = {
 }
 
 PASSWORD_RESET_DONE_RESPONSE_EXAMPLE = {
-    # 200: SuccessResponseSerializer,
-    # 422: ErrorDataResponseSerializer,
     200: OpenApiResponse(
         response=SetNewPasswordSerializer,
         description="Password Reset Successful",
@@ -461,9 +468,9 @@ PASSWORD_RESET_DONE_RESPONSE_EXAMPLE = {
             ),
         ],
     ),
-    400: OpenApiResponse(
-        response=ErrorResponseSerializer,
-        description="Bad Request",
+    422: OpenApiResponse(
+        response=ErrorDataResponseSerializer,
+        description="Validation Error",
         examples=[
             OpenApiExample(
                 name="No account found",
@@ -473,11 +480,27 @@ PASSWORD_RESET_DONE_RESPONSE_EXAMPLE = {
                     "code": ErrorCode.VALIDATION_ERROR,
                 },
             ),
+            OpenApiExample(
+                name="Password mismatch",
+                value={
+                    "status": "error",
+                    "message": "Some fields are invalid.",
+                    "code": "validation_error",
+                    "data": {
+                        "error": ["New password and confirm password do not match."]
+                    },
+                },
+            ),
+            OpenApiExample(
+                name="Field Validation Error",
+                value={
+                    "status": "error",
+                    "message": "Some fields are invalid.",
+                    "code": "validation_error",
+                    "data": {"email": ["This field is required."]},
+                },
+            ),
         ],
-    ),
-    422: OpenApiResponse(
-        response=ErrorDataResponseSerializer,
-        description="Validation Error",
     ),
 }
 

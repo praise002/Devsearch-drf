@@ -2,7 +2,6 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.conf import settings
-from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
@@ -87,7 +86,7 @@ class TestAccounts(APITestCase):
         )
 
         self.assertEqual(response.status_code, 403)
-        
+
         # Valid Login
         response = self.client.post(
             self.login_url,
@@ -98,6 +97,29 @@ class TestAccounts(APITestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+
+        if settings.DEBUG:
+            self.assertEqual(
+                response.json(),
+                {
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Login successful.",
+                    "data": {"access": response.json()["data"]["access"]},
+                },
+            )
+            self.assertIn("refresh", response.cookies)
+        else:
+            self.assertEqual(
+                response.json(),
+                {
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Login successful.",
+                    "data": {
+                        "access": response.json()["data"]["access"],
+                        "refresh": response.json()["data"]["refresh"],
+                    },
+                },
+            )
 
         # Invalid Login - Incorrect Password
         response = self.client.post(
@@ -131,8 +153,6 @@ class TestAccounts(APITestCase):
         )
 
         self.assertEqual(response.status_code, 403)
-        
-        
 
     @patch("apps.accounts.emails.SendEmail.send_email")
     def test_resend_verification_email(self, mock_send_email):
@@ -194,12 +214,13 @@ class TestAccounts(APITestCase):
         response = self.client.post(
             self.verify_email_url, {"email": new_user.email, "otp": int(otp)}
         )
+
         self.assertEqual(response.status_code, 422)
         self.assertEqual(
             response.json(),
             {
                 "status": ERR_RESPONSE_STATUS,
-                "message": "Invalid OTP provided.",
+                "message": "Invalid or expired OTP. Please enter a valid OTP or request a new one.",
                 "code": ErrorCode.VALIDATION_ERROR,
             },
         )
@@ -236,13 +257,13 @@ class TestAccounts(APITestCase):
             {"email": new_user.email, "otp": otp.otp},
         )
 
-        self.assertEqual(response.status_code, 498)
+        self.assertEqual(response.status_code, 422)
         self.assertEqual(
             response.json(),
             {
                 "status": ERR_RESPONSE_STATUS,
-                "message": "OTP has expired, please request a new one.",
-                "code": EXPIRED,
+                "message": "Invalid or expired OTP. Please enter a valid OTP or request a new one.",
+                "code": ErrorCode.VALIDATION_ERROR,
             },
         )
 
@@ -391,13 +412,45 @@ class TestAccounts(APITestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.json(),
+
+        if settings.DEBUG:
+            self.assertEqual(
+                response.json(),
+                {
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Password changed successfully. Please use the new access token.",
+                    "data": {"access": response.json()["data"]["access"]},
+                },
+            )
+            self.assertIn("refresh", response.cookies)
+        else:
+            self.assertEqual(
+                response.json(),
+                {
+                    "status": SUCCESS_RESPONSE_STATUS,
+                    "message": "Password changed successfully. Please use the new tokens.",
+                    "data": {
+                        "access": response.json()["data"]["access"],
+                        "refresh": response.json()["data"]["refresh"],
+                    },
+                },
+            )
+
+        # Test that the new access token works
+        new_access_token = response.json()["data"]["access"]
+        new_bearer_headers = {"HTTP_AUTHORIZATION": f"Bearer {new_access_token}"}
+
+        # Try to make another password change with the new token
+        test_response = self.client.post(
+            self.password_change_url,
             {
-                "status": SUCCESS_RESPONSE_STATUS,
-                "message": "Password changed successfully.",
+                "old_password": "Testimony74&",
+                "new_password": "NewPassword123&",
+                "confirm_password": "NewPassword123&",
             },
+            **new_bearer_headers,
         )
+        self.assertEqual(test_response.status_code, 200)
 
         # Incorrect Current Password
         response = self.client.post(
@@ -437,20 +490,22 @@ class TestAccounts(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.json(),
-            {"status": SUCCESS_RESPONSE_STATUS, "message": "OTP sent successfully."},
+            {
+                "status": SUCCESS_RESPONSE_STATUS,
+                "message": "If that email address is in our database, we will send you an email to reset your password.",
+            },
         )
 
         # Non-existent Email
         response = self.client.post(
             self.password_reset_request_url, {"email": "tom@gmail.com"}
         )
-        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.json(),
             {
-                "status": ERR_RESPONSE_STATUS,
-                "message": "User with this email does not exist.",
-                "code": ErrorCode.VALIDATION_ERROR,
+                "status": SUCCESS_RESPONSE_STATUS,
+                "message": "If that email address is in our database, we will send you an email to reset your password.",
             },
         )
 
@@ -485,7 +540,7 @@ class TestAccounts(APITestCase):
             response.json(),
             {
                 "status": ERR_RESPONSE_STATUS,
-                "message": "The OTP could not be found. Please enter a valid OTP or request a new one.",
+                "message": "Invalid or expired OTP. Please enter a valid OTP or request a new one.",
                 "code": ErrorCode.VALIDATION_ERROR,
             },
         )
@@ -498,13 +553,13 @@ class TestAccounts(APITestCase):
             {"email": verified_user.email, "otp": int(otp)},
         )
 
-        self.assertEqual(response.status_code, 498)
+        self.assertEqual(response.status_code, 422)
         self.assertEqual(
             response.json(),
             {
                 "status": ERR_RESPONSE_STATUS,
-                "message": "OTP has expired, please request a new one.",
-                "code": EXPIRED,
+                "message": "Invalid or expired OTP. Please enter a valid OTP or request a new one.",
+                "code": ErrorCode.VALIDATION_ERROR,
             },
         )
 
