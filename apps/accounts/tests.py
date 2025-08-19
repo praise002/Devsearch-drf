@@ -418,7 +418,7 @@ class TestAccounts(APITestCase):
                 response.json(),
                 {
                     "status": SUCCESS_RESPONSE_STATUS,
-                    "message": "Password changed successfully. Please use the new access token.",
+                    "message": "Password changed successfully.",
                     "data": {"access": response.json()["data"]["access"]},
                 },
             )
@@ -428,10 +428,10 @@ class TestAccounts(APITestCase):
                 response.json(),
                 {
                     "status": SUCCESS_RESPONSE_STATUS,
-                    "message": "Password changed successfully. Please use the new tokens.",
+                    "message": "Password changed successfully.",
                     "data": {
-                        "access": response.json()["data"]["access"],
                         "refresh": response.json()["data"]["refresh"],
+                        "access": response.json()["data"]["access"],
                     },
                 },
             )
