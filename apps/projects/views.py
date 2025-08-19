@@ -5,7 +5,11 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import ListAPIView, ListCreateAPIView
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import (
+    AllowAny,
+    IsAuthenticated,
+    IsAuthenticatedOrReadOnly,
+)
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -49,11 +53,7 @@ tags = ["Projects"]
 class ProjectListCreateView(HeaderMixin, APIView):
     paginator_class = CustomPagination()
     paginator_class.page_size = 10
-
-    def get_permissions(self):
-        if self.request.method == "GET":
-            return [AllowAny()]
-        return [IsAuthenticated()]
+    permission_classes = (IsAuthenticatedOrReadOnly,)
 
     def get_serializer_class(self, request=None):
         """
@@ -124,11 +124,7 @@ class ProjectListCreateGenericView(ListCreateAPIView):
     filterset_class = ProjectFilter
     search_fields = ["title", "description", "tags__name"]
     pagination_class = DefaultPagination
-
-    def get_permissions(self):
-        if self.request.method == "GET":
-            return [AllowAny()]
-        return [IsAuthenticated()]
+    permission_classes = (IsAuthenticatedOrReadOnly,)
 
     def get_serializer_class(self):
         if self.request.method == "POST":
@@ -334,7 +330,7 @@ class RelatedProjectsView(APIView):
 
 class FeaturedImageUpdateView(APIView):
     serializer_class = FeaturedImageSerializer
-    permission_classes = [IsAuthenticated, IsProjectOwner]
+    permission_classes = (IsAuthenticated, IsProjectOwner)
 
     def get_object(self, slug):
         try:
@@ -536,17 +532,13 @@ class TagRemoveView(APIView):
 
 class ReviewListCreateView(APIView):
     serializer_class = ReviewSerializer
+    permission_classes = (IsAuthenticatedOrReadOnly,)
 
     def get_project(self, slug):
         try:
             return Project.objects.get(slug=slug)
         except Project.DoesNotExist:
             raise NotFoundError(err_msg="Project not found.")
-
-    def get_permissions(self):
-        if self.request.method == "GET":
-            return [AllowAny()]
-        return [IsAuthenticated()]
 
     @extend_schema(
         summary="Retrieve all reviews for a project",
