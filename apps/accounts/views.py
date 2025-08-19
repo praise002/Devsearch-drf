@@ -109,13 +109,13 @@ class RegisterView(APIView):
                 extra={
                     "event_type": "user_registration",
                     "status": "failed",
-                    "email": data["email"],
+                    "email": request.data.get("email"),  # data["email"] will fail
                     "client_ip": client_ip,
                     "error": str(e),
                     "user_agent": request.META.get("HTTP_USER_AGENT", "unknown"),
                 },
             )
-            raise  # TODO: Why? Test it
+            raise  # Let DRF handle the exception and return appropriate error response
 
 
 class LoginView(TokenObtainPairView):
@@ -391,7 +391,7 @@ class LogoutAllView(APIView):
         responses=LOGOUT_ALL_RESPONSE_EXAMPLE,
     )
     def post(self, request):
-        client_ip = self.get_client_ip(request)
+        client_ip = get_client_ip(request)
         try:
             user = request.user
 
@@ -522,7 +522,7 @@ class PasswordChangeView(APIView):
                     "user_agent": request.META.get("HTTP_USER_AGENT", "unknown"),
                 },
             )
-            raise  # TODO: Why? Test it
+            raise  # Let DRF handle the exception and return appropriate error response
 
 
 class PasswordResetRequestView(APIView):
@@ -725,6 +725,6 @@ class RefreshTokensView(TokenRefreshView):
 
 
 # Questions
-# Update the swagger docs and test cases explaining the docs in detail based on my code and improving the test based on the updates
-# Generate logs - use the logging guide from owasp
+# Test failed in github actions, re-look into it
+# TODOs here - relook into it
 # Staticfiles for admin still not working in heroku
