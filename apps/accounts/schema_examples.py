@@ -29,6 +29,9 @@ if settings.DEBUG:
     PASSWORD_CHANGE_EXAMPLE = {
         "access": ACCESS_TOKEN,
     }
+    REFRESH_TOKEN_EXAMPLE = {
+        "access": ACCESS_TOKEN,
+    }
 else:
     LOGIN_EXAMPLE = {
         "refresh": REFRESH_TOKEN,
@@ -38,16 +41,11 @@ else:
         "refresh": REFRESH_TOKEN,
         "access": ACCESS_TOKEN,
     }
-
-if settings.DEBUG:
-    REFRESH_TOKEN_EXAMPLE = {
-        "access": ACCESS_TOKEN,
-    }
-else:
     REFRESH_TOKEN_EXAMPLE = {
         "access": ACCESS_TOKEN,
         "refresh": REFRESH_TOKEN,
     }
+
 
 UNAUTHORIZED_USER_RESPONSE = OpenApiResponse(
     response=ErrorResponseSerializer,
@@ -188,10 +186,10 @@ RESEND_VERIFICATION_EMAIL_RESPONSE_EXAMPLE = {
             OpenApiExample(
                 name="Field Validation Error",
                 value={
-                    "status": "error",
-                    "message": "Some fields are invalid.",
+                    "status": "failure",
+                    "message": "Validation error",
                     "code": "validation_error",
-                    "data": {"email": ["This field is required."]},
+                    "data": {"email": "This field is required."},
                 },
             ),
         ],
@@ -243,10 +241,10 @@ VERIFY_EMAIL_RESPONSE_EXAMPLE = {
             OpenApiExample(
                 name="Field Validation Error",
                 value={
-                    "status": "error",
-                    "message": "Some fields are invalid.",
+                    "status": "failure",
+                    "message": "Validation error",
                     "code": "validation_error",
-                    "data": {"otp": ["This field is required."]},
+                    "data": {"otp": "This field is required."},
                 },
             ),
         ],
@@ -270,7 +268,7 @@ LOGOUT_RESPONSE_EXAMPLE = {
     ),
     401: OpenApiResponse(
         response=ErrorResponseSerializer,
-        description="Unauthorized User or Invalid Refresh Token",
+        description="Invalid Refresh Token",
         examples=[
             OpenApiExample(
                 name="Invalid Refresh Token",
@@ -326,19 +324,11 @@ PASSWORD_CHANGE_RESPONSE_EXAMPLE = {
         description="Password Change Successful",
         examples=[
             OpenApiExample(
-                name="Password Change Successful (Production)",
+                name="Password Change Successful",
                 value={
                     "status": SUCCESS_RESPONSE_STATUS,
-                    "message": "Password changed successfully. Please use the new tokens.",
+                    "message": "Password changed successfully.",
                     "data": PASSWORD_CHANGE_EXAMPLE,
-                },
-            ),
-            OpenApiExample(
-                name="Password Change Successful (Debug)",
-                value={
-                    "status": SUCCESS_RESPONSE_STATUS,
-                    "message": "Password changed successfully. Please use the new access token.",
-                    "data": {"access": ACCESS_TOKEN},
                 },
             ),
         ],
@@ -444,10 +434,10 @@ VERIFY_OTP_RESPONSE_EXAMPLE = {
             OpenApiExample(
                 name="Field Validation Error",
                 value={
-                    "status": "error",
-                    "message": "Some fields are invalid.",
+                    "status": "failure",
+                    "message": "Validation error",
                     "code": "validation_error",
-                    "data": {"otp": ["This field is required."]},
+                    "data": {"otp": "This field is required."},
                 },
             ),
         ],
@@ -483,21 +473,24 @@ PASSWORD_RESET_DONE_RESPONSE_EXAMPLE = {
             OpenApiExample(
                 name="Password mismatch",
                 value={
-                    "status": "error",
-                    "message": "Some fields are invalid.",
+                    "status": "failure",
+                    "message": "Validation error",
                     "code": "validation_error",
                     "data": {
-                        "error": ["New password and confirm password do not match."]
+                        "error": "New password and confirm password do not match."
                     },
                 },
             ),
             OpenApiExample(
                 name="Field Validation Error",
                 value={
-                    "status": "error",
-                    "message": "Some fields are invalid.",
+                    "status": "failure",
+                    "message": "Validation error",
                     "code": "validation_error",
-                    "data": {"email": ["This field is required."]},
+                    "data": {
+                        "email": "This field may not be blank.",
+                        "new_password": "This password is too short. It must contain at least 8 characters.",
+                    },
                 },
             ),
         ],
@@ -524,7 +517,7 @@ REFRESH_TOKEN_RESPONSE_EXAMPLE = {
     ),
     401: OpenApiResponse(
         response=ErrorResponseSerializer,
-        description="Unauthorized User or Invalid Refresh Token",
+        description="Invalid Refresh Token",
         examples=[
             OpenApiExample(
                 name="Invalid Refresh Token",

@@ -478,7 +478,7 @@ class PasswordChangeView(APIView):
                     },
                 )
                 response = CustomResponse.success(
-                    message="Password changed successfully. Please use the new access token.",
+                    message="Password changed successfully.",
                     data={"access": new_tokens["access"]},
                     status_code=status.HTTP_200_OK,
                 )
@@ -504,7 +504,7 @@ class PasswordChangeView(APIView):
                     },
                 )
                 return CustomResponse.success(
-                    message="Password changed successfully. Please use the new tokens.",
+                    message="Password changed successfully.",
                     data=new_tokens,  # Contains 'refresh' and 'access' tokens
                     status_code=status.HTTP_200_OK,
                 )
@@ -724,7 +724,5 @@ class RefreshTokensView(TokenRefreshView):
         return response
 
 
-# Questions
-# Test failed in github actions, re-look into it
-# TODOs here - relook into it
+# TODO:
 # Staticfiles for admin still not working in heroku
