@@ -1,19 +1,18 @@
-from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import path, include
+from django.contrib import admin
 from django.http import JsonResponse
+from django.urls import include, path
+from drf_spectacular.utils import extend_schema
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
-from drf_spectacular.utils import extend_schema
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.views import APIView
 
+from apps.common.responses import CustomResponse
 from apps.common.serializers import SuccessResponseSerializer
 
 
@@ -28,7 +27,7 @@ class HealthCheckView(APIView):
         tags=["HealthCheck"],
     )
     def get(self, request):
-        return Response({"message": "pong"}, status=status.HTTP_200_OK)
+        return CustomResponse.success(message="pong", status_code=status.HTTP_200_OK)
 
 
 def handler404(request, exception=None):

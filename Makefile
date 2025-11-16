@@ -6,10 +6,11 @@ ENV_FILE_PARAM = --env-file .env
 endif
 
 create_env:
-	py -m venv devapi
+	python3.12 -m venv venv
 
-act:
-	.\devapi\Scripts\activate
+# act:  # doesn't work
+# 	source venv/bin/activate
+# realpath venv
 
 mmig: 
 	python manage.py makemigrations
@@ -20,6 +21,9 @@ mig:
 serv:
 	python manage.py runserver
 
+serv-plus:
+	python manage.py runserver_plus --cert-file cert.crt
+	
 suser:
 	python manage.py createsuperuser
 
@@ -38,15 +42,25 @@ reqn:
 ureqn:
 	pip freeze > requirements.txt
 
+help:  ## makefile documentation.
+	@sed -ne '/@sed/!s/## //p' $(MAKEFILE_LIST)
+
+lint: ## lint & format
+	pre-commit run --all-files
+
+init_db: ## init db
+	python manage.py initd
+
 # DOCKER COMMANDS
 build:
 	docker-compose up --build -d --remove-orphans
 
 up:
-	docker compose -f docker-compose.dev.yml up --watch
+	docker-compose up -d
 
 down:
 	docker-compose down
 
 show-logs:
 	docker-compose logs
+
